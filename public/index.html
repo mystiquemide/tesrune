@@ -7,11 +7,21 @@
   <meta name="description" content="Dark-hours hedging for US stocks held at a closed broker, executed on Bitget stock perps and flat by the opening bell.">
   <meta name="theme-color" content="#ffffff">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://tesrune.midelabs.xyz/">
+  <meta property="og:title" content="Tesrune · Flat by the bell">
+  <meta property="og:description" content="Hold the stock, hedge the dark hours. Tesrune hedges US stocks held at a closed broker on Bitget stock perps and is flat by the opening bell.">
+  <meta property="og:image" content="https://tesrune.midelabs.xyz/img/skyline-night.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Tesrune · Flat by the bell">
+  <meta name="twitter:description" content="Dark-hours hedging for US stocks on Bitget stock perps. Flat by the bell.">
+  <meta name="twitter:image" content="https://tesrune.midelabs.xyz/img/skyline-night.jpg">
   <link rel="stylesheet" href="/styles/tokens.css">
   <link rel="stylesheet" href="/styles/base.css">
   <link rel="stylesheet" href="/styles/landing.css">
 </head>
 <body>
+  <a class="skip-link" href="#main">Skip to content</a>
   <!-- SECTION 2: nav -->
   <header class="site-header">
     <div class="container nav">
@@ -35,12 +45,21 @@
       </nav>
       <div class="nav-actions">
         <a class="btn btn-primary" href="/desk">Open live desk</a>
+        <button class="nav-toggle" id="nav-toggle" type="button" aria-label="Menu" aria-expanded="false" aria-controls="mobile-menu">
+          <span></span><span></span><span></span>
+        </button>
       </div>
     </div>
+    <nav class="mobile-menu" id="mobile-menu" aria-label="Mobile">
+      <a class="mobile-link" href="#proof">Proof</a>
+      <a class="mobile-link" href="#mandate">Mandate</a>
+      <a class="mobile-link" href="#replay">Replay</a>
+      <a class="mobile-link" href="/desk">Open live desk</a>
+    </nav>
   </header>
 
   <!-- SECTION 3: hero -->
-  <main>
+  <main id="main">
     <section class="container hero">
       <div class="hero-copy">
         <p class="meta">Dark-hours hedging · Bitget AI Hackathon S2</p>

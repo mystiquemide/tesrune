@@ -232,13 +232,41 @@ async function body(req) {
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }
 
+const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+  'Referrer-Policy': 'no-referrer',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains'
+};
+const CSP = "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-ancestors 'none'; base-uri 'self'";
+
 function send(res, status, value, headers = {}) {
   const payload = typeof value === 'string' ? value : JSON.stringify(value);
-  res.writeHead(status, { 'Content-Type': typeof value === 'string' ? 'text/plain; charset=utf-8' : 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', ...headers });
+  res.writeHead(status, { 'Content-Type': typeof value === 'string' ? 'text/plain; charset=utf-8' : 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...SECURITY_HEADERS, ...headers });
   res.end(payload);
 }
 
-async function serveStatic(pathname, res) {
+// Same-origin write guard. Browsers send Origin/Referer, so the desk UI works,
+// while drive-by curl or a foreign page (which cannot set Origin cross-site
+// without CORS) is refused. Localhost dev with no Origin is allowed.
+function writeAllowed(req) {
+  const host = String(req.headers.host ?? '').toLowerCase();
+  const isLocal = host.startsWith('127.0.0.1') || host.startsWith('localhost');
+  let origin = req.headers.origin;
+  if (!origin && req.headers.referer) { try { origin = new URL(req.headers.referer).origin; } catch { origin = ''; } }
+  if (!origin) return isLocal;
+  try {
+    const oHost = new URL(origin).host.toLowerCase();
+    const allowed = new Set([host]);
+    if (process.env.TESRUNE_PUBLIC_URL) allowed.add(new URL(process.env.TESRUNE_PUBLIC_URL).host.toLowerCase());
+    return allowed.has(oHost);
+  } catch {
+    return false;
+  }
+}
+
+async function serveStatic(pathname, res, method = 'GET') {
   let relative = pathname === '/' ? 'index.html' : pathname.slice(1);
   if (relative === 'desk') relative = 'desk.html';
   const path = resolve(PUBLIC_DIR, relative);
@@ -246,8 +274,8 @@ async function serveStatic(pathname, res) {
   try {
     const content = await readFile(path);
     const type = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json' }[extname(path)] ?? 'application/octet-stream';
-    res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-cache', 'Content-Security-Policy': "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'" });
-    res.end(content);
+    res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-cache', 'Content-Security-Policy': CSP, ...SECURITY_HEADERS });
+    res.end(method === 'HEAD' ? undefined : content);
   } catch {
     send(res, 404, { error: 'Not found' });
   }
@@ -256,6 +284,7 @@ async function serveStatic(pathname, res) {
 export async function handle(req, res) {
   const url = new URL(req.url, 'http://localhost');
   if (req.method === 'POST' && !String(req.headers['content-type'] ?? '').toLowerCase().startsWith('application/json')) return send(res, 415, { error: 'Content-Type must be application/json' });
+  if (req.method === 'POST' && !writeAllowed(req)) return send(res, 403, { error: 'Cross-origin write refused' });
   try {
     if (req.method === 'GET' && url.pathname === '/api/health') return send(res, 200, { ok: true, product: 'Tesrune' });
     if (req.method === 'GET' && url.pathname === '/api/state') return send(res, 200, await statePayload());
@@ -308,7 +337,7 @@ export async function handle(req, res) {
     if (req.method === 'POST' && url.pathname === '/api/cycle/reconcile') return send(res, 200, { reconciled: await reconcileGaps() });
     if (req.method === 'POST' && url.pathname === '/api/notify/test') return send(res, 200, await sendTelegram('Tesrune test alert. If you can read this, dark-hours alerts are wired.'));
     if (req.method === 'POST' && url.pathname === '/api/run') return send(res, 200, await runOnce());
-    if (req.method === 'GET' && !url.pathname.startsWith('/api/')) return serveStatic(url.pathname, res);
+    if ((req.method === 'GET' || req.method === 'HEAD') && !url.pathname.startsWith('/api/')) return serveStatic(url.pathname, res, req.method);
     return send(res, 404, { error: 'Not found' });
   } catch (error) {
     return send(res, 400, { error: error.message });
