@@ -8,7 +8,7 @@ import { confirmProposal, openCycleStates, pendingProposals, queueDecision, reje
 import { propose } from './mandate.mjs';
 import { jumpToUnwind, loadScenario, prepareReplay } from './replay.mjs';
 import { reconcileGaps, schedules, startScheduler } from './unwind.mjs';
-import { runNotifier, sendTelegram, telegramConfigured } from './notify.mjs';
+import { broadcast, fetchNewSubscribers, getBotUsername, runNotifier, telegramConfigured, welcomeMessage } from './notify.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA_DIR = process.env.TESRUNE_DATA_DIR ?? join(ROOT, 'data');
@@ -16,6 +16,8 @@ const PUBLIC_DIR = join(ROOT, 'public');
 const SCENARIO_DIR = join(ROOT, 'scenarios');
 const REPLAY_SESSION = join(DATA_DIR, 'replay-session.json');
 const NOTIFIED = join(DATA_DIR, 'notified.json');
+const SUBS = join(DATA_DIR, 'subscribers.json');
+let telegramBot = null;
 const LOGS = {
   events: join(DATA_DIR, 'events.jsonl'),
   verdicts: join(DATA_DIR, 'verdicts.jsonl'),
@@ -157,6 +159,7 @@ async function statePayload() {
   return {
     scorecard: buildScorecard(mergedCycles, declines, proposals),
     feed: buildFeed(events, verdicts),
+    telegram: { enabled: telegramConfigured(), bot: telegramBot },
     product: 'Tesrune',
     venue: 'Bitget demo trading',
     clock: clockState(),
@@ -171,14 +174,51 @@ async function statePayload() {
   };
 }
 
+async function loadSubs() {
+  const subs = await readJson(SUBS, { chatIds: [], lastUpdateId: 0 });
+  subs.chatIds = Array.isArray(subs.chatIds) ? subs.chatIds : [];
+  // Seed the operator chat once so existing alerts keep working.
+  if (process.env.TELEGRAM_CHAT_ID && !subs.chatIds.includes(process.env.TELEGRAM_CHAT_ID)) {
+    subs.chatIds.push(process.env.TELEGRAM_CHAT_ID);
+  }
+  return subs;
+}
+async function saveSubs(subs) {
+  await mkdir(dirname(SUBS), { recursive: true });
+  await writeFile(SUBS, `${JSON.stringify(subs, null, 2)}\n`, { mode: 0o600 });
+}
+
+// Subscribe anyone who messages the bot, and welcome new /start chats.
+async function subscriberPoll() {
+  try {
+    const subs = await loadSubs();
+    const { chatIds, maxUpdateId } = await fetchNewSubscribers(subs.lastUpdateId);
+    let changed = maxUpdateId !== subs.lastUpdateId;
+    subs.lastUpdateId = maxUpdateId;
+    for (const c of chatIds) {
+      const id = String(c.id);
+      if (!subs.chatIds.includes(id)) {
+        subs.chatIds.push(id);
+        changed = true;
+        await broadcast([id], welcomeMessage());
+      }
+    }
+    if (changed) await saveSubs(subs);
+  } catch {
+    // Subscription polling must never break the desk.
+  }
+}
+
 async function notifyTick() {
   try {
-    const [pending, cycleRows, notified] = await Promise.all([
+    const [pending, cycleRows, notified, subs] = await Promise.all([
       pendingProposals(),
       readJsonl(LOGS.cycles, 200),
-      readJson(NOTIFIED, { proposals: [], failures: [] })
+      readJson(NOTIFIED, { proposals: [], failures: [] }),
+      loadSubs()
     ]);
-    const { notified: next } = await runNotifier({ pending, cycles: mergeCycles(cycleRows), notified });
+    const send = (text) => broadcast(subs.chatIds, text);
+    const { notified: next } = await runNotifier({ pending, cycles: mergeCycles(cycleRows), notified, send });
     await mkdir(dirname(NOTIFIED), { recursive: true });
     await writeFile(NOTIFIED, `${JSON.stringify(next, null, 2)}\n`, { mode: 0o600 });
   } catch {
@@ -335,7 +375,10 @@ export async function handle(req, res) {
       return send(res, 200, artifact);
     }
     if (req.method === 'POST' && url.pathname === '/api/cycle/reconcile') return send(res, 200, { reconciled: await reconcileGaps() });
-    if (req.method === 'POST' && url.pathname === '/api/notify/test') return send(res, 200, await sendTelegram('Tesrune test alert. If you can read this, dark-hours alerts are wired.'));
+    if (req.method === 'POST' && url.pathname === '/api/notify/test') {
+      const subs = await loadSubs();
+      return send(res, 200, await broadcast(subs.chatIds, 'Tesrune test alert. If you can read this, dark-hours alerts are wired.'));
+    }
     if (req.method === 'POST' && url.pathname === '/api/run') return send(res, 200, await runOnce());
     if ((req.method === 'GET' || req.method === 'HEAD') && !url.pathname.startsWith('/api/')) return serveStatic(url.pathname, res, req.method);
     return send(res, 404, { error: 'Not found' });
@@ -346,7 +389,12 @@ export async function handle(req, res) {
 
 export async function createDeskServer({ host = process.env.TESRUNE_HOST ?? '127.0.0.1', port = Number(process.env.TESRUNE_PORT ?? 4310), scheduler = true } = {}) {
   if (scheduler) await startScheduler();
-  if (scheduler && telegramConfigured()) { await notifyTick(); setInterval(() => notifyTick(), 15_000); }
+  if (scheduler && telegramConfigured()) {
+    telegramBot = await getBotUsername();
+    await subscriberPoll();
+    await notifyTick();
+    setInterval(() => subscriberPoll().then(() => notifyTick()), 15_000);
+  }
   const server = createServer((req, res) => handle(req, res));
   await new Promise((resolvePromise, reject) => {
     server.once('error', reject);

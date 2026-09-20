@@ -51,6 +51,33 @@ function pushMsg(node) { thread().append(node); thread().scrollTop = thread().sc
 function userMsg(text) { pushMsg(el('div', 'msg msg-user', text)); }
 function deskMsg(text) { pushMsg(el('div', 'msg msg-desk', text)); }
 function deskNote(text) { pushMsg(el('div', 'msg msg-note', text)); }
+function clearOnboarding() { const o = document.getElementById('onboarding'); if (o) o.remove(); }
+
+// Outcome-aware one-liner for a declined decision, built from real state.
+function declineSentence(d) {
+  const cls = d?.inputs?.class;
+  const conf = d?.inputs?.confidence;
+  if (d?.rule === 'NOT_MATERIAL' && cls) {
+    const c = conf !== undefined && conf !== null ? ` at ${conf} confidence` : '';
+    return `Read it. No hedge proposed. Qwen classified the event as ${cls}${c}, so the mandate declined it.`;
+  }
+  return `Read it. No hedge proposed. ${d?.rule || 'Declined'}. ${d?.reason || ''}`.trim();
+}
+
+// Central-column decline card, mirroring the right-rail record language.
+function declineCard(d) {
+  const card = el('div', 'card card-declined');
+  const head = el('div', 'card-head');
+  head.append(el('span', 'card-title', `${d?.inputs?.ticker || d?.inputs?.symbol || 'Event'} · NO HEDGE`));
+  head.append(el('span', 'chip chip-declined', d?.rule || 'DECLINED'));
+  card.append(head);
+  if (d?.inputs?.class) {
+    const verdict = [d.inputs.class, d.inputs.direction, d.inputs.confidence].filter((x) => x !== undefined && x !== null && x !== '').join(' · ');
+    card.append(line('card-line', 'Classification', verdict));
+  }
+  if (d?.reason) card.append(el('div', 'card-reason', d.reason));
+  return card;
+}
 
 /* Header + theme */
 let targetBell = null, drift = 0;
@@ -209,6 +236,7 @@ function renderParsePreview() {
     try {
       await postJSON('/api/book/confirm', {});
       bookFormOpen = false; pendingParse = null;
+      clearOnboarding();
       deskNote("Book's in. Nothing moves without your word.");
       refresh();
     } catch (err) {
@@ -308,13 +336,14 @@ function renderDigest(rows) {
 
 async function handleAsk(text) {
   userMsg(text);
+  clearOnboarding();
   try {
     const res = await postJSON('/api/ask', { text });
     if (res.intent === 'research') { renderDigest(res.answer); }
     else if (res.intent === 'hedge') {
       const d = res.answer?.decision;
-      if (d?.type === 'decline') deskMsg(`Not taking that one. ${d.rule}. ${d.reason || ''}`);
-      else deskNote("Proposal's below. Your call.");
+      if (d?.type === 'decline') { deskMsg(declineSentence(d)); pushMsg(declineCard(d)); }
+      else deskNote('Proposal is below and it needs your confirmation. Nothing fills until you confirm.');
     }
     else if (res.intent === 'declines') {
       if (!res.answer?.length) deskMsg("Haven't turned anything down yet.");
@@ -347,8 +376,9 @@ async function loadScenarios() {
 }
 
 /* Seed welcome once */
-function guidedEmptyState() {
+function guidedEmptyState(state) {
   const wrap = el('div', 'guide');
+  wrap.id = 'onboarding';
   wrap.append(el('p', 'guide-lead', 'I only work the dark hours. Two ways to start.'));
   const paths = el('div', 'guide-paths');
 
@@ -372,7 +402,15 @@ function guidedEmptyState() {
 
   paths.append(a, b);
   wrap.append(paths);
-  wrap.append(el('p', 'guide-foot', 'No hedge opens without your confirm. I am flat by 09:29.'));
+  const foot = el('p', 'guide-foot');
+  foot.append(document.createTextNode('No hedge opens without your confirm. I am flat by 09:29. '));
+  const url = telegramUrl(state);
+  if (url) {
+    const link = el('a', 'guide-link', 'Get dark-hours alerts on Telegram');
+    link.href = url; link.target = '_blank'; link.rel = 'noopener';
+    foot.append(link);
+  }
+  wrap.append(foot);
   pushMsg(wrap);
 }
 
@@ -383,7 +421,7 @@ function seedWelcome(state) {
   if (hasBook) {
     deskMsg("Book's loaded. Ask me what moved overnight, tell me to hedge a name, or run the February replay. I bring the proposal, you make the call.");
   } else {
-    guidedEmptyState();
+    guidedEmptyState(state);
   }
 }
 
@@ -395,11 +433,33 @@ async function refresh() {
     state = await res.json();
   } catch { return; }
   renderHeader(state);
+  renderTelegram(state);
+  renderReplayControls(state);
   renderBook(state);
   renderCycles(state);
   renderPending(state);
   applyArmedTheme(state);
   seedWelcome(state);
+}
+
+// Jump to 09:29 is only meaningful once a hedge is open and awaiting its unwind.
+function renderReplayControls(state) {
+  const jump = document.getElementById('replay-jump');
+  if (!jump) return;
+  const hasOpen = Array.isArray(state.cycles) && state.cycles.some((c) => c.status === 'open');
+  jump.disabled = !hasOpen;
+  jump.title = hasOpen ? 'Unwind the open hedge at 09:29' : 'Available once a hedge is open';
+}
+
+function telegramUrl(state) {
+  const t = state && state.telegram;
+  return t && t.enabled && t.bot ? `https://t.me/${t.bot}` : null;
+}
+function renderTelegram(state) {
+  const link = document.getElementById('alerts-link');
+  if (!link) return;
+  const url = telegramUrl(state);
+  if (url) { link.href = url; link.hidden = false; } else { link.hidden = true; }
 }
 
 /* Cycles + declines */
@@ -483,10 +543,22 @@ document.getElementById('replay-start').addEventListener('click', async (e) => {
   if (busy) return;
   const scenario = document.getElementById('replay-select').value;
   if (!scenario) { deskNote('No replay scenario available.'); return; }
+  clearOnboarding();
   busy = true; e.target.disabled = true;
   deskNote('Give me a minute with the event. Qwen reads it cold, up to 90 seconds.');
-  try { await postJSON('/api/replay/start', { scenario }); deskMsg("Read it. Proposal's below, historical event, real demo fill. Your call."); refresh(); }
-  catch (err) { deskNote(err.message); }
+  try {
+    const result = await postJSON('/api/replay/start', { scenario });
+    const d = result && result.decision;
+    if (d && d.type === 'proposal') {
+      deskNote('Read it. Proposal is below and it needs your confirmation. Nothing fills until you confirm.');
+    } else if (d && d.type === 'decline') {
+      deskMsg(declineSentence(d));
+      pushMsg(declineCard(d));
+    } else {
+      deskMsg('Read the event. No hedge proposed.');
+    }
+    refresh();
+  } catch (err) { deskNote(err.message); }
   finally { busy = false; e.target.disabled = false; }
 });
 document.getElementById('replay-jump').addEventListener('click', async (e) => {
