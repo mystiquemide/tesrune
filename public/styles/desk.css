@@ -35,6 +35,13 @@ body.desk-armed .down { color: #FF6B6B; }
   transition: background-color 0.4s ease, border-color 0.4s ease, color 0.4s ease;
 }
 
+/* Brand (desk does not load landing.css, so define it here) */
+.brand { display: inline-flex; align-items: center; gap: var(--s-12); text-decoration: none; }
+.brand:hover { text-decoration: none; }
+.brand-mark { width: 30px; height: 30px; flex-shrink: 0; border-radius: 7px; }
+.brand-text { display: flex; flex-direction: column; line-height: 1; }
+.brand-word { font-family: var(--font-display); font-weight: var(--w-bold); font-size: 17px; letter-spacing: 0.02em; color: var(--text); }
+
 /* Header */
 .desk-header {
   flex-shrink: 0;
