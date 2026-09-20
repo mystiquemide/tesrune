@@ -97,8 +97,11 @@ function renderBook(state) {
   if (!holdings.length) {
     const e = el('p', 'empty');
     e.append(el('strong', null, 'Nothing on the book. '));
-    e.append(document.createTextNode("Hand me the positions you can't trade overnight and I'll map each one to its Bitget perp."));
+    e.append(document.createTextNode("Click Add holdings and paste the positions you can't trade overnight. I map each one to its Bitget perp."));
     col.append(e);
+    const ex = el('pre', 'book-example');
+    ex.textContent = '100 TSLA\n40 NVDA\n25 MSTR';
+    col.append(ex);
   } else {
     for (const h of holdings) {
       const row = el('div', 'book-row');
@@ -223,6 +226,7 @@ function proposalCard(p) {
   const tag = p.hedgeType === 'proxy' ? 'Proxy' : p.event?.historicalReplay ? 'Replay' : p.event?.syntheticFixture ? 'Synthetic' : 'Live';
   head.append(el('span', 'chip chip-unlisted', tag));
   card.append(head);
+  card.append(el('div', 'card-confirm-req', 'Human confirmation required. Nothing opens until you confirm.'));
   if (p.hedgeType === 'proxy') {
     card.append(el('div', 'card-reason', p.basisRisk || `Correlation hedge via ${p.symbol} for ${p.proxyFor}. Not a same-name hedge.`));
     card.append(line('card-line', 'Proxy for', `${p.proxyFor} (beta ${p.beta})`));
@@ -343,13 +347,44 @@ async function loadScenarios() {
 }
 
 /* Seed welcome once */
+function guidedEmptyState() {
+  const wrap = el('div', 'guide');
+  wrap.append(el('p', 'guide-lead', 'I only work the dark hours. Two ways to start.'));
+  const paths = el('div', 'guide-paths');
+
+  const a = el('div', 'guide-path');
+  a.append(el('span', 'guide-step', 'A'));
+  a.append(el('h4', 'guide-title', 'Start with your book'));
+  a.append(el('p', 'guide-text', 'Paste the stocks you cannot trade overnight. I map each one to its Bitget perp and watch the tape.'));
+  const aBtn = el('button', 'btn btn-secondary btn-sm', 'Add holdings');
+  aBtn.type = 'button';
+  aBtn.addEventListener('click', () => document.getElementById('book-toggle').click());
+  a.append(aBtn);
+
+  const b = el('div', 'guide-path');
+  b.append(el('span', 'guide-step', 'B'));
+  b.append(el('h4', 'guide-title', 'Run a real historical replay'));
+  b.append(el('p', 'guide-text', 'Watch me classify the event, propose the hedge, place a Bitget demo fill, and unwind at 09:29.'));
+  const bBtn = el('button', 'btn btn-primary btn-sm', 'Start replay');
+  bBtn.type = 'button';
+  bBtn.addEventListener('click', () => document.getElementById('replay-start').click());
+  b.append(bBtn);
+
+  paths.append(a, b);
+  wrap.append(paths);
+  wrap.append(el('p', 'guide-foot', 'No hedge opens without your confirm. I am flat by 09:29.'));
+  pushMsg(wrap);
+}
+
 function seedWelcome(state) {
   if (threadSeeded) return;
   threadSeeded = true;
   const hasBook = state.book && Array.isArray(state.book.holdings) && state.book.holdings.length;
-  deskMsg(hasBook
-    ? "Book's loaded. Ask me what moved overnight, tell me to hedge a name, or run the February replay. I bring the proposal, you make the call."
-    : "I only work the dark hours. Hand me the stock you can't touch overnight and I'll watch the tape. Or run the replay to see a full cycle. Either way, I'm flat by 09:29.");
+  if (hasBook) {
+    deskMsg("Book's loaded. Ask me what moved overnight, tell me to hedge a name, or run the February replay. I bring the proposal, you make the call.");
+  } else {
+    guidedEmptyState();
+  }
 }
 
 /* Refresh loop */
@@ -402,7 +437,7 @@ function renderCycles(state) {
   renderScorecard(col, state.scorecard);
   const cycles = Array.isArray(state.cycles) ? [...state.cycles].reverse() : [];
   if (!cycles.length) {
-    col.append(el('p', 'empty', "No cycles yet. Every hedge I run leaves its fill, unwind, and P&L right here."));
+    col.append(el('p', 'empty', "No cycles yet. Each hedge lands here with its Bitget demo fill, the 09:29 unwind, hedge P&L, gap reconciliation once the market opens, and any declines."));
   } else {
     for (const c of cycles) {
       const children = [];

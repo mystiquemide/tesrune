@@ -11,11 +11,11 @@
   <meta property="og:url" content="https://tesrune.midelabs.xyz/">
   <meta property="og:title" content="Tesrune · Flat by the bell">
   <meta property="og:description" content="Hold the stock, hedge the dark hours. Tesrune hedges US stocks held at a closed broker on Bitget stock perps and is flat by the opening bell.">
-  <meta property="og:image" content="https://tesrune.midelabs.xyz/img/skyline-night.jpg">
+  <meta property="og:image" content="https://tesrune.midelabs.xyz/img/desk-preview.png">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Tesrune · Flat by the bell">
   <meta name="twitter:description" content="Dark-hours hedging for US stocks on Bitget stock perps. Flat by the bell.">
-  <meta name="twitter:image" content="https://tesrune.midelabs.xyz/img/skyline-night.jpg">
+  <meta name="twitter:image" content="https://tesrune.midelabs.xyz/img/desk-preview.png">
   <link rel="stylesheet" href="/styles/tokens.css">
   <link rel="stylesheet" href="/styles/base.css">
   <link rel="stylesheet" href="/styles/landing.css">
@@ -44,7 +44,7 @@
         <a class="nav-link" href="#replay">Replay</a>
       </nav>
       <div class="nav-actions">
-        <a class="btn btn-primary" href="/desk">Open live desk</a>
+        <a class="btn btn-primary" href="/desk">Open demo desk</a>
         <button class="nav-toggle" id="nav-toggle" type="button" aria-label="Menu" aria-expanded="false" aria-controls="mobile-menu">
           <span></span><span></span><span></span>
         </button>
@@ -54,7 +54,7 @@
       <a class="mobile-link" href="#proof">Proof</a>
       <a class="mobile-link" href="#mandate">Mandate</a>
       <a class="mobile-link" href="#replay">Replay</a>
-      <a class="mobile-link" href="/desk">Open live desk</a>
+      <a class="mobile-link" href="/desk">Open demo desk</a>
     </nav>
   </header>
 
@@ -65,11 +65,12 @@
         <p class="meta">Dark-hours hedging · Bitget AI Hackathon S2</p>
         <h1 class="display">Hold the stock. Hedge the dark hours. Flat by the bell.</h1>
         <p class="lede">
-          Tesrune watches the US stocks you hold at a closed broker and hedges them
-          on Bitget stock perps until the opening bell.
+          Tesrune watches the US stocks you hold at a closed broker, flags material
+          dark-hours events, and proposes a same-name hedge on Bitget stock perps.
+          You confirm, and it is scheduled to unwind before the opening bell.
         </p>
         <div class="hero-cta-row">
-          <a class="btn btn-primary" href="/desk">Open live desk</a>
+          <a class="btn btn-primary" href="/desk">Open demo desk</a>
           <a class="btn btn-secondary" href="#proof">See the proof</a>
         </div>
         <div class="hero-checks">
@@ -114,22 +115,43 @@
         <p class="meta proof-label">Verified on Bitget demo trading</p>
         <div class="proof-grid">
           <div class="proof-item">
-            <span class="proof-value">1485558571809800204</span>
-            <span class="proof-caption">Demo open · TSLAUSDT short</span>
+            <span class="proof-kicker">Bitget demo open</span>
+            <span class="proof-main">TSLAUSDT short</span>
+            <span class="proof-id">Order 1485558571809800204</span>
           </div>
           <div class="proof-item">
-            <span class="proof-value">1485558574137638913</span>
-            <span class="proof-caption">Demo close · position flat</span>
+            <span class="proof-kicker">Bitget demo close</span>
+            <span class="proof-main">Position flat</span>
+            <span class="proof-id">Order 1485558574137638913</span>
           </div>
           <div class="proof-item">
-            <span class="proof-value">qwen3.8-max</span>
-            <span class="proof-caption">Materiality model</span>
+            <span class="proof-kicker">Qwen 3.8 Max</span>
+            <span class="proof-main">Materiality model</span>
+            <span class="proof-id">qwen3.8-max</span>
           </div>
           <div class="proof-item">
-            <span class="proof-value big">69</span>
-            <span class="proof-caption">Tests passing</span>
+            <span class="proof-kicker">Tests</span>
+            <span class="proof-main">81 of 81 passing</span>
+            <span class="proof-id">node --test</span>
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- SECTION 4b: product preview -->
+    <section class="section preview">
+      <div class="container">
+        <p class="meta preview-kicker">The desk, mid-decision</p>
+        <h2 class="heading">A working trading desk, not a concept page.</h2>
+        <p class="preview-sub">
+          A real Bitget demo capture: Tesrune classifies the event, proposes a same-name
+          hedge, and holds for your confirmation. Book, desk, and cycles in one view.
+        </p>
+        <figure class="preview-frame">
+          <img src="/img/desk-preview.png" width="1440" height="900"
+               alt="Tesrune desk in its dark armed state showing a TSLAUSDT short hedge proposal awaiting human confirmation, with the book, live feed, and cycles columns and the Bitget demo trading status.">
+          <figcaption>Live capture of <a href="/desk">tesrune.midelabs.xyz/desk</a> during a historical replay. Bitget demo trading, virtual funds.</figcaption>
+        </figure>
       </div>
     </section>
 
@@ -140,7 +162,7 @@
         <p class="problem-sub">
           You hold TSLA at a broker that closes at 8 PM ET. A policy headline lands
           on Saturday. You cannot reduce the position until Monday, and the gap prints
-          against you.
+          against you. The common workarounds each cost you something.
         </p>
         <div class="problem-grid">
           <div class="problem-card">
@@ -289,6 +311,11 @@
           The model only sees what was knowable that Saturday. Current demo fills run
           live and are shown separately.
         </p>
+        <blockquote class="replay-event">
+          <span class="replay-event-kicker">The event</span>
+          <p class="replay-event-title">Global tariff increased from 10% to 15%, effective immediately</p>
+          <span class="replay-event-source">Source: CNN Business, 21 February 2026</span>
+        </blockquote>
         <div class="replay-grid">
           <div class="replay-card">
             <div class="replay-card-head">
@@ -362,7 +389,7 @@
           </div>
           <div class="sponsor">
             <span class="sponsor-name">Agent Hub</span>
-            <span class="sponsor-role">Market and execution</span>
+            <span class="sponsor-role">Optional live route, flag-gated</span>
           </div>
           <div class="sponsor">
             <span class="sponsor-name">Bitget MCP</span>
@@ -385,7 +412,7 @@
           <h2 class="heading">The market opens at 09:30. Tesrune is flat at 09:29.</h2>
           <p class="final-sub">Paste a book, replay a real event, watch it fill and unwind. Under three minutes.</p>
           <div class="final-cta">
-            <a class="btn btn-primary" href="/desk">Open the live desk</a>
+            <a class="btn btn-primary" href="/desk">Open the demo desk</a>
             <a class="btn btn-secondary" href="https://github.com/mystiquemide/tesrune" target="_blank" rel="noopener">View on GitHub</a>
           </div>
           <p class="final-foot">Bitget AI Hackathon S2 · AI Trading Desk · Open Theme</p>
@@ -415,7 +442,7 @@
         </div>
         <div class="footer-col">
           <h4>Explore</h4>
-          <a class="footer-link" href="/desk">Live desk</a>
+          <a class="footer-link" href="/desk">Demo desk</a>
           <a class="footer-link" href="#proof">Proof</a>
           <a class="footer-link" href="#mandate">Mandate</a>
           <a class="footer-link" href="#replay">Replay</a>

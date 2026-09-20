@@ -32,7 +32,7 @@
     </a>
     <div class="desk-status">
       <span class="pill pill-dark" id="window-pill"><span class="pill-dot"></span><span id="window-label">Loading</span></span>
-      <span class="stat"><span class="k">Next bell</span><span class="v" id="next-bell">--:--:--</span></span>
+      <span class="stat"><span class="k">Bell in</span><span class="v" id="next-bell">--:--:--</span></span>
       <span class="stat"><span class="k">Unwind</span><span class="v">09:29 ET</span></span>
     </div>
     <div style="display:flex; align-items:center; gap: var(--s-16);">
@@ -64,9 +64,12 @@
         <div class="composer">
           <div class="composer-actions">
             <button class="chip-btn" type="button" data-ask="what moved my names">Research</button>
-            <select class="chip-select" id="replay-select" aria-label="Replay scenario"></select>
-            <button class="chip-btn" type="button" id="replay-start">Start replay</button>
-            <button class="chip-btn" type="button" id="replay-jump">Jump to 09:29</button>
+            <span class="replay-controls">
+              <span class="replay-controls-label">Historical replay</span>
+              <select class="chip-select" id="replay-select" aria-label="Replay scenario"></select>
+              <button class="chip-btn" type="button" id="replay-start">Start replay</button>
+              <button class="chip-btn" type="button" id="replay-jump">Jump to 09:29</button>
+            </span>
           </div>
           <form class="composer-form" id="ask-form" autocomplete="off">
             <input class="composer-input" id="ask-input" placeholder="ask the desk, or type hedge 150 TSLA" aria-label="Ask the desk">

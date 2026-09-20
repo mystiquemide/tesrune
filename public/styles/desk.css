@@ -38,9 +38,9 @@ body.desk-armed .down { color: #FF6B6B; }
 /* Brand (desk does not load landing.css, so define it here) */
 .brand { display: inline-flex; align-items: center; gap: var(--s-12); text-decoration: none; }
 .brand:hover { text-decoration: none; }
-.brand-mark { width: 30px; height: 30px; flex-shrink: 0; border-radius: 7px; }
+.brand-mark { width: 26px; height: 26px; flex-shrink: 0; border-radius: 6px; }
 .brand-text { display: flex; flex-direction: column; line-height: 1; }
-.brand-word { font-family: var(--font-display); font-weight: var(--w-bold); font-size: 17px; letter-spacing: 0.02em; color: var(--text); }
+.brand-word { font-family: var(--font-display); font-weight: var(--w-bold); font-size: 15px; letter-spacing: 0.04em; color: var(--text); }
 
 /* Header */
 .desk-header {
@@ -49,7 +49,7 @@ body.desk-armed .down { color: #FF6B6B; }
   align-items: center;
   justify-content: space-between;
   gap: var(--s-24);
-  padding: var(--s-12) var(--s-24);
+  padding: var(--s-8) var(--s-24);
   background: var(--canvas);
   border-bottom: 1px solid var(--border);
 }
@@ -259,6 +259,29 @@ body.desk-armed .feed-verdict.material { background: rgba(245, 185, 66, 0.2); co
 .up { color: var(--pnl-up); }
 .down { color: var(--pnl-down); }
 
+/* Guided empty state */
+.guide { border: 1px solid var(--border); border-radius: var(--r-card); background: var(--surface); padding: var(--s-20) var(--s-24); }
+.guide-lead { font-family: var(--font-display); font-weight: var(--w-display); font-size: var(--text-body-lg); color: var(--display); }
+.guide-paths { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-16); margin-top: var(--s-16); }
+.guide-path { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-8); padding: var(--s-16); border: 1px solid var(--border); border-radius: var(--r-card); background: var(--canvas); }
+.guide-step { font-family: var(--font-mono); font-size: var(--text-meta); font-weight: var(--w-bold); letter-spacing: var(--track-meta); color: var(--accent); }
+.guide-title { font-family: var(--font-display); font-weight: var(--w-display); font-size: var(--text-body-md); color: var(--display); }
+.guide-text { font-size: var(--text-body-sm); color: var(--text-2); line-height: 1.5; flex: 1; }
+.guide-path .btn { margin-top: var(--s-4); }
+.guide-foot { margin-top: var(--s-16); font-family: var(--font-mono); font-size: var(--text-meta); letter-spacing: var(--track-meta); text-transform: uppercase; color: var(--text-3); }
+@media (max-width: 560px) { .guide-paths { grid-template-columns: 1fr; } }
+
+/* Replay control group */
+.replay-controls { display: inline-flex; align-items: center; gap: var(--s-8); padding: 4px 8px 4px 12px; border: 1px solid var(--border); border-radius: var(--r-pill); background: var(--surface); }
+.replay-controls-label { font-family: var(--font-mono); font-size: var(--text-meta); letter-spacing: var(--track-meta); text-transform: uppercase; color: var(--text-3); }
+
+/* Proposal confirmation banner */
+.card-confirm-req { margin-top: var(--s-8); padding: var(--s-8) var(--s-12); border-radius: var(--r-input); background: rgba(245, 185, 66, 0.14); color: #8A6410; font-family: var(--font-mono); font-size: var(--text-meta); letter-spacing: 0.02em; text-transform: uppercase; }
+body.desk-armed .card-confirm-req { background: rgba(245, 185, 66, 0.18); color: var(--accent); }
+
+/* Book example */
+.book-example { margin-top: var(--s-12); padding: var(--s-12); border: 1px dashed var(--border); border-radius: var(--r-input); background: var(--surface); font-family: var(--font-mono); font-size: var(--text-body-sm); color: var(--text-2); line-height: 1.6; white-space: pre; }
+
 @media (max-width: 980px) {
   .desk-body { height: auto; min-height: 100vh; overflow: visible; }
   .desk-header { flex-wrap: wrap; gap: var(--s-12); padding: var(--s-12) var(--s-16); }
@@ -281,4 +304,6 @@ body.desk-armed .feed-verdict.material { background: rgba(245, 185, 66, 0.2); co
   .scorecard-grid { grid-template-columns: 1fr 1fr; }
   .composer-form { flex-direction: column; }
   .composer-form .btn { width: 100%; }
+  .replay-controls { display: flex; flex-wrap: wrap; width: 100%; }
+  .replay-controls .chip-select { flex: 1 1 140px; min-width: 0; }
 }
