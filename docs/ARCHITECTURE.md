@@ -64,7 +64,7 @@ Three sources, each normalized to `{ id, ts, source, tickers[], title, body, url
 
 ### materiality.mjs
 
-- Qwen via OpenAI-compatible `chat/completions`, `response_format: json_object`, temperature 0.2. Env: `QWEN_API_KEY`, `QWEN_BASE_URL` (default `https://hackathon.bitgetops.com/v1`), `QWEN_MODEL` (default `qwen3.6-plus`). Same client shape as frozenmark/src/classifier.mjs, verified working 18 Sep.
+- Qwen via OpenAI-compatible `chat/completions`, `response_format: json_object`, temperature 0.2. Env: `QWEN_API_KEY`, `QWEN_BASE_URL` (default `https://hackathon.bitgetops.com/v1`), `QWEN_MODEL` (default `qwen3.8-max`). Same client shape as frozenmark/src/classifier.mjs, verified working 18 Sep.
 - Input per event: event, the held names it touches, each name's qty, mark, last broker close, mark move since close, 8-K item codes, bitget-signal context if any.
 - Output per (event, ticker): `{ class: material | priced | noise, direction: down | up | unclear, confidence 0-1, hedge_ratio 0-1, reasoning }`.
 - Rule fallback when Qwen is unavailable: 8-K item 2.02/5.02/1.01 → material, direction unclear, ratio 0.5; everything else noise. Labeled `source: rules`.
