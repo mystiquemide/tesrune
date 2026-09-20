@@ -47,7 +47,7 @@ test('claims a pending proposal before execution and removes it only after succe
   const cycle = await module.confirmProposal(entry.decision.mandate.stamp, { execute: async () => {
     observedStatus = (await module.pendingProposals())[0].pendingStatus;
     return { orderId: 'open-1' };
-  } });
+  }, schedule: async () => {} });
   assert.equal(observedStatus, 'executing');
   assert.equal(cycle.fill.orderId, 'open-1');
   assert.equal((await module.pendingProposals()).length, 0);

@@ -7,6 +7,7 @@ import { close, place, ticker } from './execution.mjs';
 import { pollFeeds } from './feeds.mjs';
 import { classifyAndLog } from './materiality.mjs';
 import { propose } from './mandate.mjs';
+import { scheduleUnwind } from './unwind.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA_DIR = process.env.TESRUNE_DATA_DIR ?? join(ROOT, 'data');
@@ -94,7 +95,7 @@ export async function processEvents({ events, holdings, contexts = {}, clock = c
   return results;
 }
 
-export async function confirmProposal(stamp, { execute = place } = {}) {
+export async function confirmProposal(stamp, { execute = place, schedule = scheduleUnwind } = {}) {
   if (confirmationLocks.has(stamp)) throw new Error('Proposal confirmation is already in progress');
   confirmationLocks.add(stamp);
   try {
@@ -115,6 +116,7 @@ export async function confirmProposal(stamp, { execute = place } = {}) {
     }
     const cycle = { cycleId: proposal.id, status: 'open', proposal, fill, openedAt: new Date().toISOString(), mode: proposal.event?.syntheticFixture ? 'synthetic' : 'live' };
     await append(PATHS.cycles, cycle);
+    await schedule(cycle);
     pending.splice(index, 1);
     await persistPending(pending);
     return cycle;

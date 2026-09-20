@@ -115,6 +115,10 @@ export async function ticker(symbol) {
   return rows?.[0] ?? null;
 }
 
+export async function orderDetail(symbol, orderId) {
+  return request(`/api/v2/mix/order/detail?symbol=${encodeURIComponent(symbol)}&productType=USDT-FUTURES&orderId=${encodeURIComponent(orderId)}`);
+}
+
 export async function previewOpen(input) {
   const payload = openPayload(input);
   const mark = await ticker(payload.symbol);
