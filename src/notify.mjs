@@ -72,19 +72,67 @@ export async function fetchNewSubscribers(offset = 0, { fetchImpl = fetch } = {}
     const chat = u.message?.chat;
     if (chat?.id) {
       const text = String(u.message?.text ?? '');
-      chatIds.push({ id: chat.id, isStart: text.trim().toLowerCase().startsWith('/start'), name: chat.first_name || chat.title || '' });
+      chatIds.push({ id: chat.id, text, isStart: text.trim().toLowerCase().startsWith('/start'), name: chat.first_name || chat.title || '' });
     }
   }
   return { chatIds, maxUpdateId };
 }
 
+// One-time bot profile setup: display name, About, description, and command menu.
+export async function configureBot({ fetchImpl = fetch } = {}) {
+  if (!token()) return { skipped: true };
+  try {
+    await tg('setMyName', { name: 'Tesrune' }, { fetchImpl });
+    await tg('setMyShortDescription', { short_description: 'Dark-hours hedging alerts for US stocks on Bitget stock perps. Alert-only, you confirm every hedge on the desk.' }, { fetchImpl });
+    await tg('setMyDescription', { description: 'Tesrune hedges the US stocks you hold at a closed broker on Bitget stock perpetuals, and is flat by the opening bell.\n\nThis bot sends dark-hours alerts. When the desk flags a material event and a hedge is ready, you get a ping with a link to confirm. It only sends alerts and never places an order.\n\nSend /start to subscribe.' }, { fetchImpl });
+    await tg('setMyCommands', { commands: [
+      { command: 'start', description: 'Subscribe to dark-hours alerts' },
+      { command: 'status', description: 'Current desk window' },
+      { command: 'help', description: 'How Tesrune works' },
+      { command: 'stop', description: 'Unsubscribe from alerts' }
+    ] }, { fetchImpl });
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: error.message };
+  }
+}
+
 export function welcomeMessage(publicUrl = PUBLIC_URL()) {
   return [
-    'Connected to Tesrune dark-hours alerts.',
-    'When the desk flags a material event and a hedge is ready, I ping you here with a link to confirm.',
-    'I only send alerts. Nothing opens without your confirm on the desk.',
+    'You are subscribed to Tesrune dark-hours alerts.',
+    '',
+    'When your broker is dark and the desk flags a material event, I send the hedge proposal here with a link to confirm. Alert only. Nothing opens until you confirm on the desk, and every hedge is flat by 09:29 ET.',
+    '',
+    'Commands: /status, /help, /stop',
     `Desk: ${publicUrl}/desk`
   ].join('\n');
+}
+
+export function helpMessage(publicUrl = PUBLIC_URL()) {
+  return [
+    'How Tesrune works:',
+    '1. Qwen reads the event and judges materiality and direction. It never sizes or places orders.',
+    '2. Deterministic mandate code decides if a hedge is allowed and caps the size.',
+    '3. You confirm the hedge on the desk. Nothing opens without you.',
+    '4. Bitget demo trading places the fill with virtual funds.',
+    '5. The scheduler unwinds it at 09:29 ET, before the bell.',
+    '',
+    'This bot sends alerts only. Commands: /status, /stop.',
+    `Desk: ${publicUrl}/desk`
+  ].join('\n');
+}
+
+export function statusMessage(clock, publicUrl = PUBLIC_URL()) {
+  const w = String(clock?.window || 'unknown').replace('_', ' ');
+  return [
+    `Desk status: ${w}.`,
+    'Hedges unwind at 09:29 ET. Bitget demo trading, virtual funds.',
+    `Desk: ${publicUrl}/desk`
+  ].join('\n');
+}
+
+export function goodbyeMessage() {
+  return 'Unsubscribed. You will not get dark-hours alerts. Send /start anytime to turn them back on.';
 }
 
 export function formatProposalAlert(p, publicUrl = PUBLIC_URL()) {

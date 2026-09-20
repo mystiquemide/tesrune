@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { broadcast, fetchNewSubscribers, formatProposalAlert, runNotifier } from '../src/notify.mjs';
+import { broadcast, fetchNewSubscribers, formatProposalAlert, goodbyeMessage, helpMessage, runNotifier, statusMessage, welcomeMessage } from '../src/notify.mjs';
 
 process.env.TELEGRAM_BOT_TOKEN = 'test-token';
 
@@ -57,5 +57,16 @@ test('fetchNewSubscribers extracts chat ids and advances the offset', async () =
   assert.equal(chatIds.length, 2);
   assert.equal(chatIds[0].id, 555);
   assert.equal(chatIds[0].isStart, true);
+  assert.equal(chatIds[0].text, '/start');
   assert.equal(chatIds[1].isStart, false);
+});
+
+test('bot messages are honest and carry the desk link', () => {
+  const url = 'https://tesrune.midelabs.xyz';
+  assert.match(welcomeMessage(url), /subscribed to Tesrune dark-hours alerts/);
+  assert.match(welcomeMessage(url), /Nothing opens until you confirm/);
+  assert.match(helpMessage(url), /never sizes or places orders/);
+  assert.match(helpMessage(url), new RegExp(`${url}/desk`));
+  assert.match(statusMessage({ window: 'dark' }, url), /Desk status: dark/);
+  assert.match(goodbyeMessage(), /Unsubscribed/);
 });

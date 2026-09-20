@@ -8,7 +8,7 @@ import { confirmProposal, openCycleStates, pendingProposals, queueDecision, reje
 import { propose } from './mandate.mjs';
 import { jumpToUnwind, loadScenario, prepareReplay } from './replay.mjs';
 import { reconcileGaps, schedules, startScheduler } from './unwind.mjs';
-import { broadcast, fetchNewSubscribers, getBotUsername, runNotifier, telegramConfigured, welcomeMessage } from './notify.mjs';
+import { broadcast, configureBot, fetchNewSubscribers, getBotUsername, goodbyeMessage, helpMessage, runNotifier, statusMessage, telegramConfigured, welcomeMessage } from './notify.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA_DIR = process.env.TESRUNE_DATA_DIR ?? join(ROOT, 'data');
@@ -197,9 +197,19 @@ async function subscriberPoll() {
     subs.lastUpdateId = maxUpdateId;
     for (const c of chatIds) {
       const id = String(c.id);
-      if (!subs.chatIds.includes(id)) {
+      const cmd = String(c.text || '').trim().toLowerCase();
+      if (cmd.startsWith('/stop')) {
+        if (subs.chatIds.includes(id)) { subs.chatIds = subs.chatIds.filter((x) => x !== id); changed = true; }
+        await broadcast([id], goodbyeMessage());
+      } else if (!subs.chatIds.includes(id)) {
         subs.chatIds.push(id);
         changed = true;
+        await broadcast([id], welcomeMessage());
+      } else if (cmd.startsWith('/help')) {
+        await broadcast([id], helpMessage());
+      } else if (cmd.startsWith('/status')) {
+        await broadcast([id], statusMessage(clockState()));
+      } else if (cmd.startsWith('/start')) {
         await broadcast([id], welcomeMessage());
       }
     }
@@ -391,6 +401,7 @@ export async function createDeskServer({ host = process.env.TESRUNE_HOST ?? '127
   if (scheduler) await startScheduler();
   if (scheduler && telegramConfigured()) {
     telegramBot = await getBotUsername();
+    await configureBot();
     await subscriberPoll();
     await notifyTick();
     setInterval(() => subscriberPoll().then(() => notifyTick()), 15_000);
