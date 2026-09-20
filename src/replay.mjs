@@ -18,7 +18,8 @@ function decimal(value, places = 8) {
 export function validateScenario(value) {
   if (value?.mode !== 'historical_replay') throw new Error('Scenario must be labeled historical_replay');
   if (!/^[A-Z]{1,6}$/.test(value?.ticker ?? '')) throw new Error('Scenario ticker is invalid');
-  if (!value?.event?.url || !value?.event?.meta?.historicalReplay) throw new Error('Scenario requires a cited historical event');
+  if (!value?.event?.meta?.historicalReplay) throw new Error('Scenario requires a labeled historical event');
+  if (!value?.event?.url && !value?.event?.mcpSourced) throw new Error('Scenario requires a cited historical event (external url or Bitget MCP source)');
   for (const key of ['fridayClose', 'mondayOpen', 'mondayClose']) {
     if (!Number.isFinite(Number(value?.historical?.[key]))) throw new Error(`Scenario historical.${key} is required`);
   }
@@ -55,7 +56,7 @@ export function historicalOutcome(scenario, hedgeQty) {
     unhedgedGapPnl: decimal(unhedgedGapPnl),
     hypotheticalHedgeGrossRange: [decimal(hedgeGrossLow), decimal(hedgeGrossHigh)],
     combinedAtOpenBeforeCostsRange: [decimal(unhedgedGapPnl + hedgeGrossLow), decimal(unhedgedGapPnl + hedgeGrossHigh)],
-    uncertainty: 'Entry and unwind are bounded by the Bitget TSLAUSDT 4H candle lows/highs because exact historical fills are unavailable.',
+    uncertainty: `Entry and unwind are bounded by the Bitget ${scenario.ticker}USDT 4H candle lows/highs because exact historical fills are unavailable.`,
     sources: { stock: scenario.historical.priceSource, perp: scenario.historical.perpSource },
     entryCandle: entry,
     unwindCandle: unwind
@@ -124,7 +125,7 @@ export async function jumpToUnwind(prepared, cycle, options = {}) {
   const artifact = {
     scenarioId: prepared.scenario.id,
     mode: 'historical_replay',
-    eventSource: prepared.event.url,
+    eventSource: prepared.event.url || prepared.event.source || 'Bitget MCP news',
     historical,
     executionProof: {
       label: 'current Bitget demo-engine execution, not historical execution',

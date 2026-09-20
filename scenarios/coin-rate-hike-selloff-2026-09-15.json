@@ -1,0 +1,46 @@
+{
+  "id": "coin-rate-hike-selloff-2026-09-15",
+  "label": "Overnight rate-hike risk-off before the COIN gap",
+  "mode": "historical_replay",
+  "ticker": "COIN",
+  "event": {
+    "id": "bitget-mcp-2026-09-15-rate-hike-riskoff",
+    "ts": "2026-09-14T23:30:00.000Z",
+    "source": "Bitget MCP news (Bitget UEX Daily)",
+    "mcpSourced": true,
+    "title": "Rate-hike expectations rise and an AI slowdown scare hit chips and crypto-linked names",
+    "body": "Bitget's daily desk note flagged rising rate-hike expectations and an AI slowdown scare into the close, with Nvidia down over 3% and a broad risk-off tone. Crypto-linked equities like Coinbase were exposed to the same risk-off move ahead of the next US open.",
+    "url": "",
+    "meta": {
+      "historicalReplay": true
+    }
+  },
+  "decisionAt": "2026-09-15T00:30:00.000Z",
+  "unwindAt": "2026-09-15T13:29:00.000Z",
+  "holdingQty": 0.04,
+  "historical": {
+    "priceSource": "Bitget MCP equity_price_historical (provider: Massive)",
+    "previousClose": 191.45,
+    "fridayDate": "2026-09-14",
+    "fridayClose": 191.45,
+    "mondayDate": "2026-09-15",
+    "mondayOpen": 183.621,
+    "mondayClose": 172.11,
+    "gapPercent": -4.089318934396971,
+    "perpSource": "Bitget public COINUSDT 4H candles",
+    "entryCandle": {
+      "ts": "2026-09-15T00:00:00.000Z",
+      "open": 185.84,
+      "high": 186.31,
+      "low": 183.29,
+      "close": 183.48
+    },
+    "unwindCandle": {
+      "ts": "2026-09-15T12:00:00.000Z",
+      "open": 181.52,
+      "high": 181.59,
+      "low": 168.34,
+      "close": 172.37
+    }
+  }
+}

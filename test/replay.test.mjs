@@ -11,6 +11,18 @@ test('validates a cited and labeled historical replay', () => {
   assert.throws(() => validateScenario({ ...scenario, event: { ...scenario.event, url: '' } }));
 });
 
+test('accepts a Bitget MCP-sourced scenario without an external url', async () => {
+  const coin = JSON.parse(await readFile(new URL('../scenarios/coin-rate-hike-selloff-2026-09-15.json', import.meta.url), 'utf8'));
+  assert.equal(validateScenario(coin), coin);
+  assert.equal(coin.event.url, '');
+  assert.equal(coin.event.mcpSourced, true);
+  const outcome = historicalOutcome(coin, 0.02);
+  assert.ok(outcome.gapPercent < 0, `expected a downside gap, got ${outcome.gapPercent}`);
+  assert.match(outcome.uncertainty, /COINUSDT/);
+  // mcpSourced is required when there is no url
+  assert.throws(() => validateScenario({ ...coin, event: { ...coin.event, mcpSourced: false } }));
+});
+
 test('keeps the historical counterfactual separate and exactly recomputable', () => {
   assert.deepEqual(historicalOutcome(scenario, 0.02), {
     label: 'historical counterfactual range, not the current demo fill or an exact historical fill',
