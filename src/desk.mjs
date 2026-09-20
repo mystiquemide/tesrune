@@ -18,6 +18,7 @@ const LOGS = {
   events: join(DATA_DIR, 'events.jsonl'),
   verdicts: join(DATA_DIR, 'verdicts.jsonl'),
   declines: join(DATA_DIR, 'declines.jsonl'),
+  proposals: join(DATA_DIR, 'proposals.jsonl'),
   cycles: join(DATA_DIR, 'cycles.jsonl'),
   replays: join(DATA_DIR, 'replays.jsonl')
 };
@@ -86,25 +87,71 @@ function mergeCycles(rows) {
   return [...merged.values()];
 }
 
+function round(value, places = 8) {
+  return value === null || value === undefined || Number.isNaN(value) ? null : Number(Number(value).toFixed(places));
+}
+
+// Honest aggregate over what the logs actually contain. Every field traces to a
+// real record; nothing is modeled or assumed.
+function buildScorecard(cycles, declines, proposals) {
+  const closed = cycles.filter((c) => c.status === 'closed');
+  const proposalCount = proposals.length;
+  const declineCount = declines.length;
+  const decided = proposalCount + declineCount;
+  let netPnl = 0, fees = 0, funding = 0, netCount = 0;
+  const latencies = [];
+  const offsets = [];
+  let gapsReconciled = 0;
+  for (const c of cycles) {
+    if (c.pnl?.netHedgePnl !== null && c.pnl?.netHedgePnl !== undefined) { netPnl += c.pnl.netHedgePnl; netCount += 1; }
+    if (c.pnl?.estimatedFees) fees += c.pnl.estimatedFees;
+    if (c.pnl?.estimatedFunding) funding += c.pnl.estimatedFunding;
+    if (c.pnl?.underlyingGapPnl !== null && c.pnl?.underlyingGapPnl !== undefined) gapsReconciled += 1;
+    if (c.effectiveness?.offsetPct !== null && c.effectiveness?.offsetPct !== undefined) offsets.push(c.effectiveness.offsetPct);
+    const evTs = c.proposal?.event?.ts ? Date.parse(c.proposal.event.ts) : NaN;
+    const propTs = c.proposal?.createdAt ? Date.parse(c.proposal.createdAt) : NaN;
+    if (Number.isFinite(evTs) && Number.isFinite(propTs) && propTs >= evTs) latencies.push((propTs - evTs) / 1000);
+  }
+  const avg = (a) => (a.length ? round(a.reduce((s, x) => s + x, 0) / a.length, 2) : null);
+  return {
+    proposals: proposalCount,
+    declines: declineCount,
+    declineRatePct: decided ? round((declineCount / decided) * 100, 1) : null,
+    cyclesClosed: closed.length,
+    cyclesOpen: cycles.filter((c) => c.status === 'open').length,
+    cyclesFailed: cycles.filter((c) => c.status === 'unwind_failed').length,
+    netHedgePnl: netCount ? round(netPnl) : null,
+    estimatedFees: round(fees),
+    estimatedFunding: round(funding),
+    avgEventToProposalSeconds: avg(latencies),
+    gapsReconciled,
+    avgHedgeOffsetPct: avg(offsets),
+    labels: { costs: 'estimated fees and funding', latency: 'event timestamp to signed proposal', offset: 'share of the verified gap covered by the hedge' }
+  };
+}
+
 async function statePayload() {
-  const [book, pending, scheduleRows, cycles, declines, events, replays, replaySession] = await Promise.all([
+  const [book, pending, scheduleRows, cycles, declines, proposals, events, replays, replaySession] = await Promise.all([
     storedBook(),
     pendingProposals(),
     schedules(),
-    readJsonl(LOGS.cycles, 100),
-    readJsonl(LOGS.declines, 30),
+    readJsonl(LOGS.cycles, 200),
+    readJsonl(LOGS.declines, 100),
+    readJsonl(LOGS.proposals, 200),
     readJsonl(LOGS.events, 20),
     readJsonl(LOGS.replays, 10),
     readJson(REPLAY_SESSION)
   ]);
+  const mergedCycles = mergeCycles(cycles);
   return {
+    scorecard: buildScorecard(mergedCycles, declines, proposals),
     product: 'Tesrune',
     venue: 'Bitget demo trading',
     clock: clockState(),
     book,
     pending,
     schedules: scheduleRows.slice(-20),
-    cycles: mergeCycles(cycles).slice(-20),
+    cycles: mergedCycles.slice(-20),
     declines,
     events: events.map(compactEvent),
     replays,

@@ -221,6 +221,14 @@ body.desk-armed .check.clipped { background: rgba(245, 185, 66, 0.18); color: va
 .chip-hedgeable { background: #E9F7F0; color: #067a53; }
 .chip-unlisted { background: var(--open-fill); color: var(--text-2); }
 
+/* Scorecard */
+.scorecard { border: 1px solid var(--border); border-radius: var(--r-card); background: var(--surface); padding: var(--s-12) var(--s-16); margin-bottom: var(--s-16); }
+.scorecard-title { font-family: var(--font-mono); font-size: var(--text-meta); letter-spacing: var(--track-meta); text-transform: uppercase; color: var(--text-3); margin-bottom: var(--s-8); }
+.scorecard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-8) var(--s-16); }
+.sc-cell { display: flex; flex-direction: column; gap: 2px; }
+.sc-k { font-size: 11px; color: var(--text-2); }
+.sc-v { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--text-body-md); color: var(--display); }
+
 /* Cycles + declines */
 .section-sep { padding: var(--s-16) var(--s-20) var(--s-8); border-top: 1px solid var(--border); }
 .record { padding: var(--s-12) 0; }

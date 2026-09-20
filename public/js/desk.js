@@ -337,9 +337,36 @@ async function refresh() {
 /* Cycles + declines */
 function record(children) { const r = el('div', 'record'); for (const c of children) r.append(c); return r; }
 function recLine(k, v, vClass) { return line('record-line', k, v, vClass); }
+function scCell(k, v) {
+  const cell = el('div', 'sc-cell');
+  cell.append(el('span', 'sc-k', k));
+  cell.append(el('span', 'sc-v', v));
+  return cell;
+}
+function renderScorecard(col, s) {
+  if (!s) return;
+  const card = el('div', 'scorecard');
+  card.append(el('div', 'scorecard-title', 'Scorecard'));
+  const grid = el('div', 'scorecard-grid');
+  grid.append(scCell('Proposals', String(s.proposals)));
+  grid.append(scCell('Declines', String(s.declines)));
+  if (s.declineRatePct !== null) grid.append(scCell('Decline rate', `${s.declineRatePct}%`));
+  grid.append(scCell('Cycles closed', String(s.cyclesClosed)));
+  if (s.netHedgePnl !== null) {
+    const cell = scCell('Net hedge P&L', String(s.netHedgePnl));
+    cell.querySelector('.sc-v').classList.add(num(s.netHedgePnl) < 0 ? 'down' : 'up');
+    grid.append(cell);
+  }
+  if (s.avgEventToProposalSeconds !== null) grid.append(scCell('Avg event to proposal', `${s.avgEventToProposalSeconds}s`));
+  if (s.gapsReconciled > 0) grid.append(scCell('Gaps reconciled', String(s.gapsReconciled)));
+  if (s.avgHedgeOffsetPct !== null) grid.append(scCell('Avg hedge offset', `${s.avgHedgeOffsetPct}%`));
+  card.append(grid);
+  col.append(card);
+}
 function renderCycles(state) {
   const col = document.getElementById('cycles-col');
   col.replaceChildren();
+  renderScorecard(col, state.scorecard);
   const cycles = Array.isArray(state.cycles) ? [...state.cycles].reverse() : [];
   if (!cycles.length) {
     col.append(el('p', 'empty', "No cycles yet. Every hedge I run leaves its fill, unwind, and P&L right here."));
