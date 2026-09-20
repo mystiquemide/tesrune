@@ -66,9 +66,10 @@ Three sources, each normalized to `{ id, ts, source, tickers[], title, body, url
 
 - Qwen via OpenAI-compatible `chat/completions`, `response_format: json_object`, temperature 0.2. Env: `QWEN_API_KEY`, `QWEN_BASE_URL` (default `https://hackathon.bitgetops.com/v1`), `QWEN_MODEL` (default `qwen3.8-max`). Same client shape as frozenmark/src/classifier.mjs, verified working 18 Sep.
 - Input per event: event, the held names it touches, each name's qty, mark, last broker close, mark move since close, 8-K item codes, bitget-signal context if any.
-- Output per (event, ticker): `{ class: material | priced | noise, direction: down | up | unclear, confidence 0-1, hedge_ratio 0-1, reasoning }`.
-- Rule fallback when Qwen is unavailable: 8-K item 2.02/5.02/1.01 → material, direction unclear, ratio 0.5; everything else noise. Labeled `source: rules`.
-- The classifier never sees account balances and never emits an order. `hedge_ratio` is a suggestion that mandate.mjs caps.
+- Qwen output per (event, ticker): `{ class: material | priced | noise, direction: down | up | unclear, confidence 0-1, reasoning }`. The model does not size positions.
+- System policy adds a deterministic 0.5 default ratio only for `material + down`; every other result gets 0. The human may request a different quantity, but mandate.mjs caps it at the held quantity.
+- Rule fallback when Qwen is unavailable: 8-K item 2.02/5.02/1.01 → material, direction unclear, ratio 0; everything else noise. Labeled `source: rules`.
+- The classifier never sees account balances and never emits an order.
 
 ### mandate.mjs (pure, tested)
 
