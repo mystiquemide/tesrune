@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tesrune desk · Flat by the bell</title>
+  <meta name="theme-color" content="#ffffff">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles/tokens.css">
+  <link rel="stylesheet" href="/styles/base.css">
+  <link rel="stylesheet" href="/styles/desk.css">
+</head>
+<body class="desk-body">
+  <header class="desk-header">
+    <a class="brand" href="/" aria-label="Tesrune home">
+      <svg class="brand-mark" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <rect width="32" height="32" rx="7" fill="#202020"/>
+        <path d="M16 7 A9 9 0 0 0 16 25" fill="none" stroke="#8B94A3" stroke-width="2" stroke-linecap="round"/>
+        <path d="M16 7 A9 9 0 0 1 16 25" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+        <line x1="16" y1="16" x2="16" y2="9.5" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="16" cy="7" r="2.3" fill="#F5B942"/>
+      </svg>
+      <span class="brand-text"><span class="brand-word">TESRUNE</span></span>
+    </a>
+    <div class="desk-status">
+      <span class="pill pill-dark" id="window-pill"><span class="pill-dot"></span><span id="window-label">Loading</span></span>
+      <span class="stat"><span class="k">Next bell</span><span class="v" id="next-bell">--:--:--</span></span>
+      <span class="stat"><span class="k">Unwind</span><span class="v">09:29 ET</span></span>
+    </div>
+    <div style="display:flex; align-items:center; gap: var(--s-16);">
+      <span class="desk-venue" id="venue">Bitget demo</span>
+      <a class="desk-back" href="/">Back to overview</a>
+    </div>
+  </header>
+
+  <div class="replay-banner" id="replay-banner"></div>
+
+  <main class="desk-main">
+    <!-- Book column -->
+    <section class="desk-col">
+      <div class="col-head">
+        <span>Book</span>
+        <button class="mini-btn" id="book-toggle" type="button">Add holdings</button>
+      </div>
+      <div class="col-scroll" id="book-col">
+        <p class="empty">Loading holdings.</p>
+      </div>
+    </section>
+
+    <!-- Desk conversation column -->
+    <section class="desk-col">
+      <div class="col-head">Desk</div>
+      <div class="desk-conv" id="desk-thread"></div>
+      <div class="desk-dock">
+        <div id="pending-slot"></div>
+        <div class="composer">
+          <div class="composer-actions">
+            <button class="chip-btn" type="button" data-ask="what moved my names">Research</button>
+            <select class="chip-select" id="replay-select" aria-label="Replay scenario"></select>
+            <button class="chip-btn" type="button" id="replay-start">Start replay</button>
+            <button class="chip-btn" type="button" id="replay-jump">Jump to 09:29</button>
+          </div>
+          <form class="composer-form" id="ask-form" autocomplete="off">
+            <input class="composer-input" id="ask-input" placeholder="ask the desk, or type hedge 150 TSLA" aria-label="Ask the desk">
+            <button class="btn btn-primary btn-sm" type="submit">Send</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- Cycles + declines column -->
+    <section class="desk-col">
+      <div class="col-head">Cycles</div>
+      <div class="col-scroll" id="cycles-col">
+        <p class="empty">Loading.</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="/js/desk.js" defer></script>
+</body>
+</html>

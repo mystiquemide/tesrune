@@ -55,6 +55,21 @@ test('claims a pending proposal before execution and removes it only after succe
   delete process.env.TESRUNE_DATA_DIR;
 });
 
+test('dismisses a pending proposal and logs a human decline', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'tesrune-cycle-reject-'));
+  process.env.TESRUNE_DATA_DIR = directory;
+  const module = await import(`../src/cycle.mjs?reject=${Date.now()}`);
+  const [entry] = await module.processEvents({ events: [{ ...event, id: 'reject-event' }], holdings: [holding], contexts: {}, clock: dark, classifyFn: classifier });
+  const stamp = entry.decision.mandate.stamp;
+  assert.equal((await module.pendingProposals()).length, 1);
+  const result = await module.rejectProposal(stamp);
+  assert.equal(result.dismissed, true);
+  assert.equal((await module.pendingProposals()).length, 0);
+  assert.match(await readFile(join(directory, 'declines.jsonl'), 'utf8'), /HUMAN_REJECTED/);
+  await assert.rejects(module.rejectProposal(stamp), /not found/);
+  delete process.env.TESRUNE_DATA_DIR;
+});
+
 test('marks an ambiguous execution failure unknown and blocks a retry', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'tesrune-cycle-failure-'));
   process.env.TESRUNE_DATA_DIR = directory;

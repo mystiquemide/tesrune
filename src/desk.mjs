@@ -4,7 +4,7 @@ import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { confirmBook, parseHoldings, readBook, resolveHoldings } from './book.mjs';
 import { state as clockState } from './clock.mjs';
-import { confirmProposal, latestCycleStates, openCycleStates, pendingProposals, queueDecision, runOnce } from './cycle.mjs';
+import { confirmProposal, openCycleStates, pendingProposals, queueDecision, rejectProposal, runOnce } from './cycle.mjs';
 import { propose } from './mandate.mjs';
 import { jumpToUnwind, loadScenario, prepareReplay } from './replay.mjs';
 import { schedules, startScheduler } from './unwind.mjs';
@@ -80,6 +80,12 @@ export async function researchDigest(book) {
   }));
 }
 
+function mergeCycles(rows) {
+  const merged = new Map();
+  for (const row of rows) merged.set(row.cycleId, { ...(merged.get(row.cycleId) ?? {}), ...row });
+  return [...merged.values()];
+}
+
 async function statePayload() {
   const [book, pending, scheduleRows, cycles, declines, events, replays, replaySession] = await Promise.all([
     storedBook(),
@@ -98,7 +104,7 @@ async function statePayload() {
     book,
     pending,
     schedules: scheduleRows.slice(-20),
-    cycles: latestCycleStates(cycles).slice(-20),
+    cycles: mergeCycles(cycles).slice(-20),
     declines,
     events: events.map(compactEvent),
     replays,
@@ -159,7 +165,8 @@ function send(res, status, value, headers = {}) {
 }
 
 async function serveStatic(pathname, res) {
-  const relative = pathname === '/' ? 'index.html' : pathname.slice(1);
+  let relative = pathname === '/' ? 'index.html' : pathname.slice(1);
+  if (relative === 'desk') relative = 'desk.html';
   const path = resolve(PUBLIC_DIR, relative);
   if (!path.startsWith(`${resolve(PUBLIC_DIR)}/`) && path !== resolve(PUBLIC_DIR, 'index.html')) return send(res, 403, { error: 'Forbidden' });
   try {
@@ -202,6 +209,10 @@ export async function handle(req, res) {
         await writeReplaySession({ ...session, cycle });
       }
       return send(res, 200, cycle);
+    }
+    if (req.method === 'POST' && url.pathname === '/api/proposal/reject') {
+      const input = await body(req);
+      return send(res, 200, await rejectProposal(input.stamp));
     }
     if (req.method === 'POST' && url.pathname === '/api/replay/start') {
       const input = await body(req);
