@@ -75,6 +75,18 @@ export async function evaluateEvent({ event, holding, context, clock, openHedges
   });
 }
 
+export async function queueDecision({ event, holding, decision }) {
+  const pending = await pendingProposals();
+  const entry = { eventId: event.id, ticker: holding.ticker, syntheticFixture: Boolean(event.meta?.synthetic), historicalReplay: Boolean(event.meta?.historicalReplay), decision };
+  if (decision.type === 'decline') await append(PATHS.declines, entry);
+  if (decision.type === 'proposal') {
+    if (!pending.some((proposal) => proposal.eventId === event.id && proposal.ticker === holding.ticker)) pending.push({ ...decision, pendingStatus: 'pending' });
+    await append(PATHS.proposals, entry);
+  }
+  await persistPending(pending);
+  return entry;
+}
+
 export async function processEvents({ events, holdings, contexts = {}, clock = clockState(), classifyFn = classifyAndLog, openHedges = [] }) {
   const pending = await pendingProposals();
   const results = [];
@@ -82,16 +94,9 @@ export async function processEvents({ events, holdings, contexts = {}, clock = c
     for (const holding of holdings.filter(({ ticker }) => event.tickers?.includes(ticker))) {
       if (pending.some((proposal) => proposal.eventId === event.id && proposal.ticker === holding.ticker)) continue;
       const decision = await evaluateEvent({ event, holding, context: contexts[holding.ticker] ?? {}, clock, openHedges, classifyFn });
-      const entry = { eventId: event.id, ticker: holding.ticker, syntheticFixture: Boolean(event.meta?.synthetic), historicalReplay: Boolean(event.meta?.historicalReplay), decision };
-      if (decision.type === 'decline') await append(PATHS.declines, entry);
-      if (decision.type === 'proposal') {
-        pending.push({ ...decision, pendingStatus: 'pending' });
-        await append(PATHS.proposals, entry);
-      }
-      results.push(entry);
+      results.push(await queueDecision({ event, holding, decision }));
     }
   }
-  await persistPending(pending);
   return results;
 }
 

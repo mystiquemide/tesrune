@@ -95,29 +95,33 @@ export async function classify(event, holding, context = {}, { fetcher = fetch }
   if (!key) return { ...fallback, source: 'rules-no-key' };
   const base = process.env.QWEN_BASE_URL ?? 'https://hackathon.bitgetops.com/v1';
   const model = process.env.QWEN_MODEL ?? 'qwen3.8-max';
-  try {
-    const response = await fetcher(`${base}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-      body: JSON.stringify({
-        model,
-        temperature: 0.1,
-        response_format: { type: 'json_object' },
-        messages: [
-          { role: 'system', content: SYSTEM },
-          { role: 'user', content: JSON.stringify(classifierInput(event, holding, context)) }
-        ]
-      }),
-      signal: AbortSignal.timeout(45_000)
-    });
-    const text = await response.text();
-    if (!response.ok) throw new Error(`Qwen HTTP ${response.status}: ${text.slice(0, 200)}`);
-    const payload = JSON.parse(text);
-    const content = String(payload.choices?.[0]?.message?.content ?? '').replace(/^```(?:json)?\s*|\s*```$/g, '');
-    return { ...normalizeVerdict(JSON.parse(content)), source: 'qwen', model };
-  } catch (error) {
-    return { ...fallback, source: 'rules-qwen-fallback', qwenError: error.message };
+  let lastError;
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      const response = await fetcher(`${base}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+        body: JSON.stringify({
+          model,
+          temperature: 0.1,
+          response_format: { type: 'json_object' },
+          messages: [
+            { role: 'system', content: SYSTEM },
+            { role: 'user', content: JSON.stringify(classifierInput(event, holding, context)) }
+          ]
+        }),
+        signal: AbortSignal.timeout(45_000)
+      });
+      const text = await response.text();
+      if (!response.ok) throw new Error(`Qwen HTTP ${response.status}: ${text.slice(0, 200)}`);
+      const payload = JSON.parse(text);
+      const content = String(payload.choices?.[0]?.message?.content ?? '').replace(/^```(?:json)?\s*|\s*```$/g, '');
+      return { ...normalizeVerdict(JSON.parse(content)), source: 'qwen', model, attempts: attempt };
+    } catch (error) {
+      lastError = error;
+    }
   }
+  return { ...fallback, source: 'rules-qwen-fallback', qwenError: lastError.message, attempts: 2 };
 }
 
 async function logVerdict(entry) {

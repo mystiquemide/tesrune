@@ -51,13 +51,17 @@ test('Qwen structured output is validated and model-labeled', async () => {
   assert.equal(result.source, 'qwen');
   assert.equal(result.model, 'qwen3.8-max');
   assert.equal(result.hedge_ratio, 0.5);
+  assert.equal(result.attempts, 1);
   assert.equal(requestBody.messages[1].content.includes('accountBalance'), false);
 });
 
 test('Qwen failure falls back to deterministic rules and stays labeled', async () => {
   process.env.BITGET_QWEN_API_KEY = 'test-key';
-  const result = await classify(event, holding, context, { fetcher: async () => { throw new Error('offline'); } });
+  let attempts = 0;
+  const result = await classify(event, holding, context, { fetcher: async () => { attempts += 1; throw new Error('offline'); } });
   assert.equal(result.source, 'rules-qwen-fallback');
+  assert.equal(attempts, 2);
+  assert.equal(result.attempts, 2);
   assert.equal(result.class, 'material');
   assert.equal(result.direction, 'unclear');
   assert.equal(result.qwenError, 'offline');
