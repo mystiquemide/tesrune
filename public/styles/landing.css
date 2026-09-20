@@ -280,6 +280,18 @@
   .how-step + .how-step { border-left: 0; border-top: 1px solid var(--border); padding-top: var(--s-24); }
 }
 
+/* Capabilities */
+.caps { text-align: center; }
+.caps h2 { font-size: var(--text-h); max-width: 720px; margin-inline: auto; }
+.caps-sub { max-width: 620px; margin: var(--s-16) auto 0; color: var(--text-2); font-size: var(--text-body-lg); }
+.caps-grid { margin-top: var(--s-48); display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-16); text-align: left; }
+.cap { background: var(--canvas); border: 1px solid var(--border); border-radius: var(--r-card); padding: var(--s-24); display: flex; flex-direction: column; gap: var(--s-8); }
+.cap-kicker { font-family: var(--font-mono); font-size: var(--text-meta); letter-spacing: var(--track-meta); text-transform: uppercase; color: var(--text-3); }
+.cap h3 { font-family: var(--font-display); font-weight: var(--w-display); font-size: var(--text-body-lg); letter-spacing: -0.02em; color: var(--display); }
+.cap p { color: var(--text-2); font-size: var(--text-body-sm); }
+@media (max-width: 860px) { .caps-grid { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 560px) { .caps-grid { grid-template-columns: 1fr; } }
+
 /* Section 7: mandate */
 .mandate { text-align: center; }
 .mandate h2 { font-size: var(--text-h); max-width: 760px; margin-inline: auto; }
