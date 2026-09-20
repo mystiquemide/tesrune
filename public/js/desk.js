@@ -414,14 +414,51 @@ function guidedEmptyState(state) {
   pushMsg(wrap);
 }
 
+// Hydrate the center once per load from real state, so a refresh reflects the
+// current situation instead of falling back to first-load onboarding.
 function seedWelcome(state) {
   if (threadSeeded) return;
   threadSeeded = true;
-  const hasBook = state.book && Array.isArray(state.book.holdings) && state.book.holdings.length;
-  if (hasBook) {
-    deskMsg("Book's loaded. Ask me what moved overnight, tell me to hedge a name, or run the February replay. I bring the proposal, you make the call.");
-  } else {
+  const holdings = state.book && Array.isArray(state.book.holdings) ? state.book.holdings.length : 0;
+  const pending = (state.pending || []).filter((p) => p.type === 'proposal' && p.pendingStatus === 'pending');
+  const declines = state.declines && state.declines.length ? state.declines.length : 0;
+  const cycles = Array.isArray(state.cycles) ? state.cycles : [];
+  const openCycle = cycles.find((c) => c.status === 'open');
+  const closedCycle = [...cycles].reverse().find((c) => c.status === 'closed');
+  const session = state.replaySession;
+  const decision = session && session.prepared ? session.prepared.decision : null;
+
+  // Genuinely untouched: nothing anywhere. Only then show onboarding.
+  if (!holdings && !pending.length && !declines && !cycles.length && !session) {
     guidedEmptyState(state);
+    return;
+  }
+
+  if (pending.length) {
+    deskNote('Proposal is below and it needs your confirmation. Nothing fills until you confirm.');
+    return;
+  }
+  if (openCycle) {
+    const sym = openCycle.proposal?.symbol || openCycle.symbol || 'the hedge';
+    const qty = openCycle.proposal?.qty;
+    deskMsg(`Hedge open: ${sym} short${qty ? ' ' + qty : ''}. I unwind it at 09:29 ET. Use Jump to 09:29 for the round trip.`);
+    return;
+  }
+  if (decision && decision.type === 'decline') {
+    deskMsg('This replay was declined. No hedge was proposed.');
+    pushMsg(declineCard(decision));
+    return;
+  }
+  if (closedCycle) {
+    deskNote('Last cycle is complete. The fill, unwind, and P&L are in Cycles on the right.');
+    return;
+  }
+  if (declines) {
+    deskNote('Prior declines are logged in Declines on the right.');
+    return;
+  }
+  if (holdings) {
+    deskMsg("Book's loaded. Ask what moved overnight, request a hedge, or run a replay. I bring the proposal, you make the call.");
   }
 }
 
