@@ -46,7 +46,7 @@ async function qwenParse(text) {
   const key = process.env.QWEN_API_KEY ?? process.env.BITGET_QWEN_API_KEY;
   if (!key) return null;
   const base = process.env.QWEN_BASE_URL ?? 'https://hackathon.bitgetops.com/v1';
-  const model = process.env.QWEN_MODEL ?? 'qwen3.6-plus';
+  const model = process.env.QWEN_MODEL ?? 'qwen3.8-max';
   const response = await fetch(`${base}/chat/completions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
