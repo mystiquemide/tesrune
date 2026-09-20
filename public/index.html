@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tesrune · Flat by the bell</title>
+  <meta name="description" content="Dark-hours hedging for US stocks held at a closed broker, executed on Bitget stock perps and flat by the opening bell.">
+  <meta name="theme-color" content="#ffffff">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles/tokens.css">
+  <link rel="stylesheet" href="/styles/base.css">
+  <link rel="stylesheet" href="/styles/landing.css">
+</head>
+<body>
+  <!-- SECTION 2: nav -->
+  <header class="site-header">
+    <div class="container nav">
+      <a class="brand" href="/" aria-label="Tesrune home">
+        <svg class="brand-mark" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect width="32" height="32" rx="7" fill="#202020"/>
+          <path d="M16 7 A9 9 0 0 0 16 25" fill="none" stroke="#8B94A3" stroke-width="2" stroke-linecap="round"/>
+          <path d="M16 7 A9 9 0 0 1 16 25" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+          <line x1="16" y1="16" x2="16" y2="9.5" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+          <circle cx="16" cy="7" r="2.3" fill="#F5B942"/>
+        </svg>
+        <span class="brand-text">
+          <span class="brand-word">TESRUNE</span>
+          <span class="brand-tag">Flat by the bell</span>
+        </span>
+      </a>
+      <nav class="nav-links" aria-label="Primary">
+        <a class="nav-link" href="#proof">Proof</a>
+        <a class="nav-link" href="#mandate">Mandate</a>
+        <a class="nav-link" href="#replay">Replay</a>
+      </nav>
+      <div class="nav-actions">
+        <a class="btn btn-primary" href="/desk">Open live desk</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- SECTION 3: hero -->
+  <main>
+    <section class="container hero">
+      <div class="hero-copy">
+        <p class="meta">Dark-hours hedging · Bitget AI Hackathon S2</p>
+        <h1 class="display">Hold the stock. Hedge the dark hours. Flat by the bell.</h1>
+        <p class="lede">
+          Tesrune watches the US stocks you hold at a closed broker and hedges them
+          on Bitget stock perps until the opening bell.
+        </p>
+        <div class="hero-cta-row">
+          <a class="btn btn-primary" href="/desk">Open live desk</a>
+          <a class="btn btn-secondary" href="#proof">See the proof</a>
+        </div>
+        <div class="hero-checks">
+          <span class="hero-check">
+            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10.5l4 4 8-9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Closed hours only
+          </span>
+          <span class="hero-check">
+            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10.5l4 4 8-9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Never net short
+          </span>
+          <span class="hero-check">
+            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10.5l4 4 8-9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Flat by 09:29 ET
+          </span>
+        </div>
+      </div>
+
+      <div class="clock-panel" aria-label="Two market clocks">
+        <div class="clock-col">
+          <span class="meta">External broker</span>
+          <span class="clock-status" id="broker-status">Closed</span>
+          <span class="clock-sub">Next open 09:30 ET</span>
+        </div>
+        <div class="clock-center">
+          <span class="pill pill-dark" id="window-pill"><span class="pill-dot"></span><span id="window-label">Loading</span></span>
+          <span class="countdown" id="countdown">--:--:--</span>
+          <span class="countdown-label">until the bell</span>
+        </div>
+        <div class="clock-col right">
+          <span class="meta">Bitget stock perp</span>
+          <span class="clock-status">Live 24/7</span>
+          <span class="clock-sub">Scheduled flat 09:29 ET</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 4: proof strip -->
+    <section id="proof" class="proof">
+      <div class="container">
+        <p class="meta proof-label">Verified on Bitget demo trading</p>
+        <div class="proof-grid">
+          <div class="proof-item">
+            <span class="proof-value">1485558571809800204</span>
+            <span class="proof-caption">Demo open · TSLAUSDT short</span>
+          </div>
+          <div class="proof-item">
+            <span class="proof-value">1485558574137638913</span>
+            <span class="proof-caption">Demo close · position flat</span>
+          </div>
+          <div class="proof-item">
+            <span class="proof-value">qwen3.8-max</span>
+            <span class="proof-caption">Materiality model</span>
+          </div>
+          <div class="proof-item">
+            <span class="proof-value big">69</span>
+            <span class="proof-caption">Tests passing</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 5: problem band -->
+    <section class="section band problem">
+      <div class="container">
+        <h2 class="heading">The position stays open. The broker doesn't.</h2>
+        <p class="problem-sub">
+          You hold TSLA at a broker that closes at 8 PM ET. A policy headline lands
+          on Saturday. You cannot reduce the position until Monday, and the gap prints
+          against you.
+        </p>
+        <div class="problem-grid">
+          <div class="problem-card">
+            <h3>Sell every Friday</h3>
+            <p>Flatten before the weekend and you forfeit the position you wanted to hold.</p>
+          </div>
+          <div class="problem-card">
+            <h3>Buy puts</h3>
+            <p>Options need approval, cost premium, and most retail brokers gate them.</p>
+          </div>
+          <div class="problem-card">
+            <h3>Accept the gap</h3>
+            <p>Do nothing and wear whatever the market decides while you were asleep.</p>
+          </div>
+        </div>
+        <p class="problem-foot">
+          Tesrune adds a fourth choice: a temporary, same-name hedge with a fixed
+          removal time.
+        </p>
+      </div>
+    </section>
+
+    <!-- SECTION 6: how it works -->
+    <section class="section how">
+      <div class="container">
+        <h2 class="heading">One event. One decision. One clock.</h2>
+        <div class="how-grid">
+          <div class="how-step">
+            <span class="how-num">01</span>
+            <span class="how-title">Book</span>
+            <p class="how-text">Paste the holdings you cannot trade overnight. Confirm the parse before anything is stored.</p>
+          </div>
+          <div class="how-step">
+            <span class="how-num">02</span>
+            <span class="how-title">Event</span>
+            <p class="how-text">During dark hours Tesrune reads Bitget MCP news, SEC 8-K filings, and perp price moves.</p>
+          </div>
+          <div class="how-step">
+            <span class="how-num">03</span>
+            <span class="how-title">Hedge</span>
+            <p class="how-text">Qwen judges materiality and direction. The mandate sizes and stamps it. You confirm.</p>
+          </div>
+          <div class="how-step">
+            <span class="how-num">04</span>
+            <span class="how-title">Unwind</span>
+            <p class="how-text">The scheduler closes the hedge at 09:29 ET and verifies the position is flat.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 7: mandate -->
+    <section id="mandate" class="section mandate">
+      <div class="container">
+        <h2 class="heading">Qwen interprets. Hard code controls execution.</h2>
+        <p class="mandate-sub">
+          The model reads the news and forms an opinion. It never touches the exchange.
+          These five rules decide whether an order is even allowed to exist.
+        </p>
+        <div class="mandate-list">
+          <div class="mandate-row">
+            <span class="mandate-num">01</span>
+            <div class="mandate-body">
+              <span class="mandate-title">Dark hours only</span>
+              <span class="mandate-desc">No hedge proposal while your broker is open. Sell there instead.</span>
+            </div>
+          </div>
+          <div class="mandate-row">
+            <span class="mandate-num">02</span>
+            <div class="mandate-body">
+              <span class="mandate-title">Hedge only</span>
+              <span class="mandate-desc">The position can be reduced, never flipped net short.</span>
+            </div>
+          </div>
+          <div class="mandate-row">
+            <span class="mandate-num">03</span>
+            <div class="mandate-body">
+              <span class="mandate-title">Delta capped</span>
+              <span class="mandate-desc">A request for 150 against 100 held is clipped to 100 and logged.</span>
+            </div>
+          </div>
+          <div class="mandate-row">
+            <span class="mandate-num">04</span>
+            <div class="mandate-body">
+              <span class="mandate-title">One hedge per name</span>
+              <span class="mandate-desc">A duplicate short on a name already hedged is declined.</span>
+            </div>
+          </div>
+          <div class="mandate-row">
+            <span class="mandate-num">05</span>
+            <div class="mandate-body">
+              <span class="mandate-title">Flat by the bell</span>
+              <span class="mandate-desc">Every fill carries a pre-authorized unwind at 09:29 ET.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 8: historical replay -->
+    <section id="replay" class="section band replay">
+      <div class="container">
+        <h2 class="heading">Historical replay: Saturday, 21 February 2026</h2>
+        <p class="replay-sub">
+          A real weekend tariff headline, replayed against real historical prices.
+          The model only sees what was knowable that Saturday. Current demo fills run
+          live and are shown separately.
+        </p>
+        <div class="replay-grid">
+          <div class="replay-card">
+            <div class="replay-card-head">
+              <span class="meta">Qwen 3.8 Max decision</span>
+              <span class="tag tag-historical">Historical</span>
+            </div>
+            <div class="replay-lines">
+              <div class="replay-line"><span class="k">Verdict</span><span class="v">material</span></div>
+              <div class="replay-line"><span class="k">Direction</span><span class="v">down</span></div>
+              <div class="replay-line"><span class="k">Confidence</span><span class="v">0.70</span></div>
+              <div class="replay-line"><span class="k">Hedge size</span><span class="v">50% deterministic</span></div>
+            </div>
+          </div>
+
+          <div class="replay-card">
+            <div class="replay-card-head">
+              <span class="meta">Real Monday outcome</span>
+              <span class="tag tag-historical">Historical</span>
+            </div>
+            <div class="replay-lines">
+              <div class="replay-line"><span class="k">Friday close</span><span class="v">411.82</span></div>
+              <div class="replay-line"><span class="k">Monday open</span><span class="v">407.285</span></div>
+              <div class="replay-line"><span class="k">Opening gap</span><span class="v down">-1.10%</span></div>
+            </div>
+          </div>
+
+          <div class="replay-card">
+            <div class="replay-card-head">
+              <span class="meta">Historical perp range</span>
+              <span class="tag tag-historical">Historical</span>
+            </div>
+            <div class="replay-lines">
+              <div class="replay-line"><span class="k">Entry</span><span class="v">410.92 to 412.00</span></div>
+              <div class="replay-line"><span class="k">Unwind</span><span class="v">401.03 to 408.26</span></div>
+              <div class="replay-line"><span class="k">Hedge gross</span><span class="v up">+0.0532 to +0.2194</span></div>
+            </div>
+            <p class="replay-note">Range from real Bitget 4H candles, not exact fills.</p>
+          </div>
+
+          <div class="replay-card">
+            <div class="replay-card-head">
+              <span class="meta">Current Bitget demo</span>
+              <span class="tag tag-current">Current</span>
+            </div>
+            <div class="replay-lines">
+              <div class="replay-line"><span class="k">Open order</span><span class="v">1485558571809800204</span></div>
+              <div class="replay-line"><span class="k">Close order</span><span class="v">1485558574137638913</span></div>
+              <div class="replay-line"><span class="k">Position</span><span class="v up">FLAT</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="replay-foot">
+          <p>Historical range and current demo fills are separate evidence, never merged into one number.</p>
+          <a class="btn btn-primary" href="/desk">Inspect the full proof in the desk</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 9: built on Bitget -->
+    <section class="section sponsors">
+      <div class="container">
+        <h2 class="heading">Built on Bitget</h2>
+        <div class="sponsors-row">
+          <div class="sponsor">
+            <span class="sponsor-name">Stock perps</span>
+            <span class="sponsor-role">The 24/7 same-name hedge</span>
+          </div>
+          <div class="sponsor">
+            <span class="sponsor-name">Demo engine</span>
+            <span class="sponsor-role">Real fills, virtual funds</span>
+          </div>
+          <div class="sponsor">
+            <span class="sponsor-name">Agent Hub</span>
+            <span class="sponsor-role">Market and execution</span>
+          </div>
+          <div class="sponsor">
+            <span class="sponsor-name">Bitget MCP</span>
+            <span class="sponsor-role">US stock data and news</span>
+          </div>
+          <div class="sponsor">
+            <span class="sponsor-name">Qwen 3.8 Max</span>
+            <span class="sponsor-role">Materiality reasoning</span>
+          </div>
+        </div>
+        <p class="sponsors-foot">Remove the stock perps and the dark-hours hedge disappears.</p>
+      </div>
+    </section>
+
+    <!-- Final CTA -->
+    <section class="final-wrap">
+      <div class="container">
+        <!-- Photo: Willian Justen de Vasconcellos on Unsplash, Unsplash License -->
+        <div class="final-band">
+          <h2 class="heading">The market opens at 09:30. Tesrune is flat at 09:29.</h2>
+          <p class="final-sub">Paste a book, replay a real event, watch it fill and unwind. Under three minutes.</p>
+          <div class="final-cta">
+            <a class="btn btn-primary" href="/desk">Open the live desk</a>
+            <a class="btn btn-secondary" href="https://github.com/mystiquemide/tesrune" target="_blank" rel="noopener">View on GitHub</a>
+          </div>
+          <p class="final-foot">Bitget AI Hackathon S2 · AI Trading Desk · Open Theme</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-main">
+        <div class="footer-brand">
+          <a class="brand" href="/" aria-label="Tesrune home">
+            <svg class="brand-mark" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <rect width="32" height="32" rx="7" fill="#202020"/>
+              <path d="M16 7 A9 9 0 0 0 16 25" fill="none" stroke="#8B94A3" stroke-width="2" stroke-linecap="round"/>
+              <path d="M16 7 A9 9 0 0 1 16 25" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+              <line x1="16" y1="16" x2="16" y2="9.5" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/>
+              <circle cx="16" cy="7" r="2.3" fill="#F5B942"/>
+            </svg>
+            <span class="brand-text">
+              <span class="brand-word">TESRUNE</span>
+              <span class="brand-tag">Flat by the bell</span>
+            </span>
+          </a>
+          <p class="footer-brand-line">Dark-hours hedging for US stocks held at a closed broker, executed on Bitget stock perps.</p>
+        </div>
+        <div class="footer-col">
+          <h4>Explore</h4>
+          <a class="footer-link" href="/desk">Live desk</a>
+          <a class="footer-link" href="#proof">Proof</a>
+          <a class="footer-link" href="#mandate">Mandate</a>
+          <a class="footer-link" href="#replay">Replay</a>
+        </div>
+        <div class="footer-col">
+          <h4>Project</h4>
+          <a class="footer-link" href="https://github.com/mystiquemide/tesrune" target="_blank" rel="noopener">GitHub</a>
+          <a class="footer-link" href="https://bitget-ai.gitbook.io/bitgetai_hackathons2/" target="_blank" rel="noopener">Hackathon S2</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <span>Bitget AI Hackathon S2 · AI Trading Desk</span>
+        <a href="https://unsplash.com/@willianjusten" target="_blank" rel="noopener">Skyline photo by Willian Justen on Unsplash</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/js/hero.js" defer></script>
+</body>
+</html>

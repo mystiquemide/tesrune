@@ -164,7 +164,7 @@ async function serveStatic(pathname, res) {
   if (!path.startsWith(`${resolve(PUBLIC_DIR)}/`) && path !== resolve(PUBLIC_DIR, 'index.html')) return send(res, 403, { error: 'Forbidden' });
   try {
     const content = await readFile(path);
-    const type = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml' }[extname(path)] ?? 'application/octet-stream';
+    const type = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json' }[extname(path)] ?? 'application/octet-stream';
     res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-cache', 'Content-Security-Policy': "default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'" });
     res.end(content);
   } catch {
