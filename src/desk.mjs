@@ -8,12 +8,14 @@ import { confirmProposal, openCycleStates, pendingProposals, queueDecision, reje
 import { propose } from './mandate.mjs';
 import { jumpToUnwind, loadScenario, prepareReplay } from './replay.mjs';
 import { reconcileGaps, schedules, startScheduler } from './unwind.mjs';
+import { runNotifier, sendTelegram, telegramConfigured } from './notify.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA_DIR = process.env.TESRUNE_DATA_DIR ?? join(ROOT, 'data');
 const PUBLIC_DIR = join(ROOT, 'public');
 const SCENARIO_DIR = join(ROOT, 'scenarios');
 const REPLAY_SESSION = join(DATA_DIR, 'replay-session.json');
+const NOTIFIED = join(DATA_DIR, 'notified.json');
 const LOGS = {
   events: join(DATA_DIR, 'events.jsonl'),
   verdicts: join(DATA_DIR, 'verdicts.jsonl'),
@@ -169,6 +171,21 @@ async function statePayload() {
   };
 }
 
+async function notifyTick() {
+  try {
+    const [pending, cycleRows, notified] = await Promise.all([
+      pendingProposals(),
+      readJsonl(LOGS.cycles, 200),
+      readJson(NOTIFIED, { proposals: [], failures: [] })
+    ]);
+    const { notified: next } = await runNotifier({ pending, cycles: mergeCycles(cycleRows), notified });
+    await mkdir(dirname(NOTIFIED), { recursive: true });
+    await writeFile(NOTIFIED, `${JSON.stringify(next, null, 2)}\n`, { mode: 0o600 });
+  } catch {
+    // Alerting must never break the desk.
+  }
+}
+
 async function writeReplaySession(value) {
   await mkdir(dirname(REPLAY_SESSION), { recursive: true });
   await writeFile(REPLAY_SESSION, `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600 });
@@ -289,6 +306,7 @@ export async function handle(req, res) {
       return send(res, 200, artifact);
     }
     if (req.method === 'POST' && url.pathname === '/api/cycle/reconcile') return send(res, 200, { reconciled: await reconcileGaps() });
+    if (req.method === 'POST' && url.pathname === '/api/notify/test') return send(res, 200, await sendTelegram('Tesrune test alert. If you can read this, dark-hours alerts are wired.'));
     if (req.method === 'POST' && url.pathname === '/api/run') return send(res, 200, await runOnce());
     if (req.method === 'GET' && !url.pathname.startsWith('/api/')) return serveStatic(url.pathname, res);
     return send(res, 404, { error: 'Not found' });
@@ -299,6 +317,7 @@ export async function handle(req, res) {
 
 export async function createDeskServer({ host = process.env.TESRUNE_HOST ?? '127.0.0.1', port = Number(process.env.TESRUNE_PORT ?? 4310), scheduler = true } = {}) {
   if (scheduler) await startScheduler();
+  if (scheduler && telegramConfigured()) { await notifyTick(); setInterval(() => notifyTick(), 15_000); }
   const server = createServer((req, res) => handle(req, res));
   await new Promise((resolvePromise, reject) => {
     server.once('error', reject);
