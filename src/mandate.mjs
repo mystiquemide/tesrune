@@ -114,7 +114,7 @@ export function propose({ holding, verdict, clockState, openHedges = [], event, 
     fundingSettlements: settlements,
     estimatedFunding,
     clippedFrom,
-    event: event ? { id: event.id, ts: event.ts, source: event.source, title: event.title, url: event.url } : null,
+    event: event ? { id: event.id, ts: event.ts, source: event.source, title: event.title, url: event.url, syntheticFixture: Boolean(event.meta?.synthetic) } : null,
     verdict,
     mandate: { checks }
   };
