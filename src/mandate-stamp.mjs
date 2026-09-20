@@ -1,9 +1,24 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const KEY_PATH = join(process.env.TESRUNE_DATA_DIR ?? join(ROOT, 'data'), 'mandate.key');
+let cachedSecret;
 
 function secret() {
-  const value = process.env.TESRUNE_MANDATE_SECRET;
-  if (!value || value.length < 32) throw new Error('TESRUNE_MANDATE_SECRET must contain at least 32 characters');
-  return value;
+  if (cachedSecret) return cachedSecret;
+  const configured = process.env.TESRUNE_MANDATE_SECRET;
+  if (configured && configured.length >= 32) cachedSecret = configured;
+  if (!cachedSecret && existsSync(KEY_PATH)) cachedSecret = readFileSync(KEY_PATH, 'utf8').trim();
+  if (!cachedSecret) {
+    cachedSecret = randomBytes(32).toString('hex');
+    mkdirSync(dirname(KEY_PATH), { recursive: true });
+    writeFileSync(KEY_PATH, `${cachedSecret}\n`, { mode: 0o600 });
+  }
+  if (cachedSecret.length < 32) throw new Error('Mandate secret must contain at least 32 characters');
+  return cachedSecret;
 }
 
 function canonical(order) {
