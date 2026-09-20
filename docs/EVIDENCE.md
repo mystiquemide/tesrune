@@ -11,8 +11,8 @@ Two things to read carefully before the numbers:
 
 ## 1. Test suite
 
-- 70 of 70 tests pass with `node --test 'test/*.test.mjs'` on Node 22.
-- Coverage spans the market clock, the signed demo execution client, feeds, book parsing, the mandate rules, materiality classification, the cycle, the unwind scheduler, and the desk server.
+- 81 of 81 tests pass with `node --test 'test/*.test.mjs'` on Node 22.
+- Coverage spans the market clock, the signed demo execution client, feeds, book parsing, the mandate rules, materiality classification, the cycle, the unwind scheduler and gap reconciliation, the desk server, the Telegram notifier, the index-proxy sizing and its mandate branch, and both replay scenarios.
 
 ## 2. Bitget demo execution cycles (demo-engine fills, virtual funds)
 
@@ -75,6 +75,17 @@ Prices, from Bitget MCP historical data and Bitget public TSLAUSDT 4H candles:
 
 Why a range and not one number: a stock Friday close is not a weekend perp fill, so the hedge is priced across the real perp candle band rather than claimed at an exact price. Before costs, the combined open range across the hedge and the underlying spans -0.1282 to +0.038. These are ranges, not exact fills.
 
+### Second scenario, 15 September 2026 COIN rate-hike selloff
+
+Honest label: historical counterfactual range, sourced from Bitget MCP. The catalyst is Bitget MCP editorial (a daily desk note on rising rate-hike expectations and an AI slowdown scare), so it is cited as the Bitget MCP source, not an external wire, and has no external URL.
+
+- Prices, from Bitget MCP equity_price_historical: 14 Sep close 191.45, 15 Sep open 183.621 (a -4.09% overnight gap), 15 Sep close 172.11.
+- Perp candles, from Bitget public COINUSDT 4H candles: entry 2026-09-15T00:00Z open 185.84 high 186.31 low 183.29 close 183.48; unwind 2026-09-15T12:00Z open 181.52 high 181.59 low 168.34 close 172.37.
+- Decision time 2026-09-15T00:30Z is a verified dark window; the unwind resolves to 2026-09-15T13:29Z from the clock.
+- Outcome on a verified run: Qwen 3.8 Max classified the event "priced" at 0.72 confidence, so the mandate declined it NOT_MATERIAL. This is the honest already-priced refusal path, decided live by the model, not forced. No order was placed.
+
+Together the two scenarios cover both outcomes: TSLA produces a material-down proposal and a full demo cycle, COIN produces a priced-decline.
+
 ## 4. Feeds, holdings, and mandate proofs
 
 ### T3, feeds
@@ -106,7 +117,15 @@ Why a range and not one number: a stock Friday close is not a weekend perp fill,
 - Qwen never sees account balances, never sizes above the cap, and has no code path to the exchange.
 - 53 of 53 tests passed at this stage.
 
-## 5. Limitations and honest labels
+## 5. Added capabilities
+
+- Post-open gap reconciliation. After the cash session opens, the desk fetches the real open and computes the gap on the hedged shares and the share of it the hedge offset. It only runs for live cycles while the window is broker-open, and the gap stays null and labeled pending until then. Unit-tested end to end with an injected quote. No live overnight cycle has been reconciled yet because the demo cycles to date are replay-mode, so this is proven by test and mechanism, and populates on a real dark-hours hedge held into the next open.
+- Hedge scorecard. The desk aggregates proposals, declines, decline rate, closed cycles, net hedge P&L, average event-to-proposal latency, gaps reconciled, and average hedge offset, computed only from real logged records. Served in the desk state and shown in the Cycles column.
+- Live feed. The desk joins recent events with their Qwen verdicts and shows them in the Book column, so the event to classification path is visible. Populates from live feed polls.
+- Telegram alerts. Alert-only with a deep link back to the desk to confirm. A test alert to the configured chat returned ok from the Telegram API. The notifier dedupes to one alert per proposal and one per unwind failure, and it never places an order.
+- Index-proxy hedge. For an unlisted name, the desk can size a correlation hedge on an index perp using a beta estimated from real returns, capped at the beta target and labeled a proxy with basis risk. Additive to the mandate, off by default behind `TESRUNE_PROXY_HEDGE=1`, and unit-tested including the sizing, the mandate branch, and the book enrichment.
+
+## 6. Limitations and honest labels
 
 - Holdings are self-reported. The user pastes them. We never claim to verify broker positions. The delta cap is enforced against the pasted quantity.
 - Demo execution uses virtual funds on the Bitget demo engine. It is not a live UTA account.

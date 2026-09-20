@@ -20,6 +20,15 @@ Retail and desk traders who hold US single-name stocks at a closed broker and wa
 6. Bitget demo fill. Execution refuses any order without a valid mandate stamp, then places a real fill on the Bitget demo engine with virtual funds.
 7. 09:29 unwind. Every hedge carries a pre-authorized unwind at 09:29 ET. The scheduler closes the position and verifies it flat, and it re-arms after a restart.
 
+## Beyond the core loop
+
+- Post-open reconciliation. Once the cash session opens, the desk fetches the real open, computes the gap on the hedged shares, and shows how much of it the hedge offset. Until then the gap stays null and labeled pending, never guessed.
+- Hedge scorecard. Proposals, declines, decline rate, closed cycles, net hedge P&L, average event-to-proposal latency, and average hedge offset, aggregated from real records only.
+- Live feed. Incoming Bitget MCP news, SEC 8-K filings, and perp moves, each shown with its Qwen verdict, so the event to decision path is visible.
+- Telegram alerts. Optional. When a hedge is ready or an unwind fails during dark hours, the desk pings you with a deep link back to confirm. Alert only, it never places an order or bypasses the human-confirm boundary.
+- Index-proxy hedge. Optional. For a held name with no Bitget stock perp, the desk can size a correlation hedge on an index perp using a beta estimated from real returns, clearly labeled as a proxy with basis risk. Off by default.
+- Replay library. Two real scenarios: a TSLA weekend tariff gap that produces a material-down proposal, and a COIN rate-hike session that Qwen classifies as already priced and the desk declines. Both use real prices and real perp candles.
+
 ## Why Bitget is load-bearing
 
 - Bitget lists same-name US stock perpetuals that trade 24/7. That is the only same-name hedge instrument available while a US broker is dark, so a TSLA holding hedges with TSLAUSDT.
@@ -41,6 +50,7 @@ Requires Node 22.
    - `QWEN_BASE_URL=https://hackathon.bitgetops.com/v1`.
    - `QWEN_MODEL=qwen3.8-max`.
    - `TESRUNE_MANDATE_SECRET` (32 or more random characters).
+   - Optional: `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` for dark-hours alerts, `TESRUNE_PUBLIC_URL` for the link they carry, and `TESRUNE_PROXY_HEDGE=1` to enable the index-proxy hedge for unlisted names.
 2. Start the desk:
    ```
    node --env-file=.env src/desk.mjs
@@ -50,14 +60,15 @@ Requires Node 22.
 ## A 3-minute judge path
 
 1. Open `/desk`.
-2. Click Start replay to load the historical scenario.
+2. Pick the TSLA tariff scenario and click Start replay. Qwen classifies it material and down, and a proposal appears, which flips the desk to its dark, act-now state.
 3. Click Confirm hedge to place the real Bitget demo fill.
 4. Click Jump to 09:29 to unwind the hedge and see the position go flat.
 5. Read the proof, where the demo execution and the historical counterfactual are shown separately and never merged into one number.
+6. For the refusal path, run the COIN scenario, which Qwen classifies as already priced and the desk declines, or type `hedge 150 TSLA` to see the delta cap clip a request. The scorecard and cycle log update as you go.
 
 ## Evidence
 
-See [docs/EVIDENCE.md](docs/EVIDENCE.md) for the curated, verified runs: 70 of 70 tests passing, the four Bitget demo execution cycles with their order ids, the 21 February 2026 tariff counterfactual kept in its own section, and the feeds, book, and mandate proofs.
+See [docs/EVIDENCE.md](docs/EVIDENCE.md) for the curated, verified runs: 81 of 81 tests passing, the Bitget demo execution cycles with their order ids, two real replay scenarios (a TSLA material-down proposal and a COIN priced-decline) kept separate from current demo execution, and the feeds, book, mandate, scorecard, and proxy proofs.
 
 ## Limitations
 
