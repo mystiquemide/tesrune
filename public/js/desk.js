@@ -96,8 +96,8 @@ function renderBook(state) {
   document.getElementById('book-toggle').textContent = holdings.length ? 'Edit book' : 'Add holdings';
   if (!holdings.length) {
     const e = el('p', 'empty');
-    e.append(el('strong', null, 'No holdings yet. '));
-    e.append(document.createTextNode('Add the positions you hold at a closed broker. Tesrune maps each to its Bitget stock perp.'));
+    e.append(el('strong', null, 'Nothing on the book. '));
+    e.append(document.createTextNode("Hand me the positions you can't trade overnight and I'll map each one to its Bitget perp."));
     col.append(e);
     return;
   }
@@ -180,7 +180,7 @@ function renderParsePreview() {
     try {
       await postJSON('/api/book/confirm', {});
       bookFormOpen = false; pendingParse = null;
-      deskNote('Book confirmed. Ask what moved your names, request a hedge, or start a replay.');
+      deskNote("Book's in. Nothing moves without your word.");
       refresh();
     } catch (err) {
       confirm.disabled = false; confirm.textContent = 'Confirm book';
@@ -228,13 +228,13 @@ function proposalCard(p) {
     confirm.disabled = true; dismiss.disabled = true; confirm.textContent = 'Placing on Bitget...';
     try {
       const cycle = await postJSON('/api/proposal/confirm', { stamp: p.mandate.stamp });
-      deskMsg(`Filled ${p.symbol} short ${p.qty}. Open order ${cycle.fill?.orderId ?? 'recorded'}. Flat by 09:29 ET.`);
+      deskMsg(`Done. ${p.symbol} short ${p.qty} is on the book, order ${cycle.fill?.orderId ?? 'recorded'}. I close it at 09:29, not a minute later.`);
       refresh();
     } catch (err) { confirm.disabled = false; dismiss.disabled = false; confirm.textContent = 'Confirm hedge'; deskNote(err.message); }
   });
   dismiss.addEventListener('click', async () => {
     confirm.disabled = true; dismiss.disabled = true;
-    try { await postJSON('/api/proposal/reject', { stamp: p.mandate.stamp }); deskNote(`Dismissed the ${p.symbol} proposal.`); refresh(); }
+    try { await postJSON('/api/proposal/reject', { stamp: p.mandate.stamp }); deskNote(`Dropped the ${p.symbol} proposal. Nothing left open.`); refresh(); }
     catch (err) { confirm.disabled = false; dismiss.disabled = false; deskNote(err.message); }
   });
   return card;
@@ -251,7 +251,7 @@ function renderPending(state) {
 
 /* Ask */
 function renderDigest(rows) {
-  if (!rows || !rows.length) { deskMsg('No holdings to research yet.'); return; }
+  if (!rows || !rows.length) { deskMsg("Give me a book first and I'll tell you what moved."); return; }
   let any = false;
   for (const r of rows) {
     if (!r.events || !r.events.length) continue;
@@ -266,7 +266,7 @@ function renderDigest(rows) {
       pushMsg(item);
     }
   }
-  if (!any) deskMsg('No new events touched your holdings during this dark window.');
+  if (!any) deskMsg("Quiet window. Nothing touched your names.");
 }
 
 async function handleAsk(text) {
@@ -276,15 +276,15 @@ async function handleAsk(text) {
     if (res.intent === 'research') { renderDigest(res.answer); }
     else if (res.intent === 'hedge') {
       const d = res.answer?.decision;
-      if (d?.type === 'decline') deskMsg(`Declined: ${d.rule}. ${d.reason || ''}`);
-      else deskNote('Proposal ready below.');
+      if (d?.type === 'decline') deskMsg(`Not taking that one. ${d.rule}. ${d.reason || ''}`);
+      else deskNote("Proposal's below. Your call.");
     }
     else if (res.intent === 'declines') {
-      if (!res.answer?.length) deskMsg('No declines recorded.');
+      if (!res.answer?.length) deskMsg("Haven't turned anything down yet.");
       else res.answer.slice(-6).forEach((d) => deskMsg(`${d.decision?.rule || 'DECLINED'} · ${d.ticker || ''} ${d.decision?.reason || ''}`));
     }
-    else if (res.intent === 'status') deskMsg(`Window ${res.answer?.clock?.window || 'unknown'}. Venue ${res.answer?.venue || ''}.`);
-    else deskMsg(typeof res.answer === 'string' ? res.answer : 'Ask what moved my names, hedge 150 TSLA, why did you decline, or status.');
+    else if (res.intent === 'status') deskMsg(`Right now we're ${(res.answer?.clock?.window || 'unknown').replace('_', ' ')}. Trading on ${res.answer?.venue || 'the demo book'}.`);
+    else deskMsg(typeof res.answer === 'string' ? res.answer : "Try me: what moved my names, hedge 150 TSLA, why did you decline, or status.");
   } catch (err) { deskNote(err.message); }
   refresh();
 }
@@ -315,8 +315,8 @@ function seedWelcome(state) {
   threadSeeded = true;
   const hasBook = state.book && Array.isArray(state.book.holdings) && state.book.holdings.length;
   deskMsg(hasBook
-    ? 'Your book is loaded. Ask what moved your names, request a hedge, or start the historical replay.'
-    : 'Your broker is dark. Add a holdings book, or start the historical replay to see a full cycle. The desk is flat by 09:29 ET.');
+    ? "Book's loaded. Ask me what moved overnight, tell me to hedge a name, or run the February replay. I bring the proposal, you make the call."
+    : "I only work the dark hours. Hand me the stock you can't touch overnight and I'll watch the tape. Or run the replay to see a full cycle. Either way, I'm flat by 09:29.");
 }
 
 /* Refresh loop */
@@ -342,7 +342,7 @@ function renderCycles(state) {
   col.replaceChildren();
   const cycles = Array.isArray(state.cycles) ? [...state.cycles].reverse() : [];
   if (!cycles.length) {
-    col.append(el('p', 'empty', 'No hedge cycles yet. A confirmed hedge shows its fill, unwind, and final state here.'));
+    col.append(el('p', 'empty', "No cycles yet. Every hedge I run leaves its fill, unwind, and P&L right here."));
   } else {
     for (const c of cycles) {
       const children = [];
@@ -362,7 +362,7 @@ function renderCycles(state) {
   const sep = el('div', 'section-sep');
   sep.append(el('span', 'meta', 'Declines'));
   col.append(sep);
-  if (!declines.length) { col.append(el('p', 'empty', 'No declined actions.')); return; }
+  if (!declines.length) { col.append(el('p', 'empty', "Nothing declined yet.")); return; }
   for (const d of declines.slice(0, 15)) {
     const children = [recLine(d.decision?.rule || 'DECLINED', d.ticker || '')];
     if (d.decision?.reason) children.push(el('div', 'record-note', d.decision.reason));
@@ -389,19 +389,18 @@ document.getElementById('replay-start').addEventListener('click', async (e) => {
   const scenario = document.getElementById('replay-select').value;
   if (!scenario) { deskNote('No replay scenario available.'); return; }
   busy = true; e.target.disabled = true;
-  deskNote('Preparing replay. Reading the event with Qwen, this can take up to 90 seconds.');
-  try { await postJSON('/api/replay/start', { scenario }); deskMsg('Replay prepared. Confirm the proposal below to place the current demo hedge.'); refresh(); }
+  deskNote('Give me a minute with the event. Qwen reads it cold, up to 90 seconds.');
+  try { await postJSON('/api/replay/start', { scenario }); deskMsg("Read it. Proposal's below, historical event, real demo fill. Your call."); refresh(); }
   catch (err) { deskNote(err.message); }
   finally { busy = false; e.target.disabled = false; }
 });
 document.getElementById('replay-jump').addEventListener('click', async (e) => {
   if (busy) return;
   busy = true; e.target.disabled = true;
-  deskNote('Jumping the replay clock to 09:29 ET and unwinding.');
+  deskNote('Winding the clock to 09:29 and closing it out.');
   try {
     const artifact = await postJSON('/api/replay/jump', {});
-    const cur = artifact.current || artifact;
-    deskMsg('Replay complete. Historical counterfactual and current demo fills are recorded separately, see Cycles.');
+    deskMsg("That's the round trip. I keep the historical outcome and the real demo fills in separate columns, I never blend them. Check Cycles.");
     if (artifact.historical?.label) deskNote(artifact.historical.label);
   } catch (err) { deskNote(err.message); }
   finally { busy = false; e.target.disabled = false; }
