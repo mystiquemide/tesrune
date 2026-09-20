@@ -2,6 +2,7 @@ import { appendFile, mkdir, readFile } from 'node:fs/promises';
 import { createHmac, randomUUID } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { verifyMandateStamp } from './mandate-stamp.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const LOG = join(ROOT, 'data', 'orders.jsonl');
@@ -52,10 +53,24 @@ async function request(path, { method = 'GET', body, auth = true, paper = true }
       'ACCESS-TIMESTAMP': timestamp
     });
   }
-  const response = await fetch(`${BASE}${path}`, { method, headers, body: bodyText || undefined });
-  const json = await response.json();
-  if (json.code !== '00000') throw new Error(`Bitget demo ${json.code}: ${json.msg}`);
+  const response = await fetch(`${BASE}${path}`, { method, headers, body: bodyText || undefined, signal: AbortSignal.timeout(15_000) });
+  const text = await response.text();
+  let json;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new Error(`Bitget demo returned HTTP ${response.status} with a non-JSON response`);
+  }
+  if (!response.ok || json.code !== '00000') throw new Error(`Bitget demo ${json.code ?? response.status}: ${json.msg ?? response.statusText}`);
   return json.data;
+}
+
+export function normalizeQty(qty) {
+  const value = Number(qty);
+  if (!Number.isFinite(value) || value <= 0) throw new Error('Quantity must be a positive finite number');
+  const floored = Math.floor((value + Number.EPSILON) * 100) / 100;
+  if (floored <= 0) throw new Error('Quantity is below the 0.01 contract increment');
+  return floored;
 }
 
 export function openPayload({ symbol, qty }) {
@@ -64,7 +79,7 @@ export function openPayload({ symbol, qty }) {
     productType: 'USDT-FUTURES',
     marginMode: 'crossed',
     marginCoin: 'USDT',
-    size: Number(qty).toFixed(2),
+    size: normalizeQty(qty).toFixed(2),
     side: 'sell',
     posSide: 'short',
     tradeSide: 'open',
@@ -115,10 +130,32 @@ export async function previewOpen(input) {
   return result;
 }
 
-export async function place(input) {
-  const dryRun = await previewOpen(input);
+export function openOrderId(response) {
+  if (!response?.orderId) throw new Error('Bitget demo accepted the request without returning an order id');
+  return response.orderId;
+}
+
+export function closeOrderId(symbol, response) {
+  const failures = response?.failureList ?? [];
+  const success = (response?.successList ?? []).find((item) => item.symbol === symbol);
+  if (failures.length || !success?.orderId) throw new Error(`Bitget demo did not close ${symbol}: ${JSON.stringify(failures)}`);
+  return success.orderId;
+}
+
+export async function place(order, stamp) {
+  const authorized = {
+    symbol: order.symbol,
+    qty: normalizeQty(order.qty),
+    side: 'sell',
+    posSide: 'short',
+    unwindAt: order.unwindAt,
+    eventId: order.eventId
+  };
+  if (!verifyMandateStamp(authorized, stamp)) throw new Error('Order rejected: invalid mandate stamp');
+  const dryRun = await previewOpen(authorized);
   const response = await request('/api/v2/mix/order/place-order', { method: 'POST', body: dryRun.payload });
-  const result = { phase: 'open', symbol: input.symbol, qty: Number(input.qty), request: dryRun.payload, response };
+  const orderId = openOrderId(response);
+  const result = { phase: 'open', symbol: authorized.symbol, qty: authorized.qty, unwindAt: authorized.unwindAt, eventId: authorized.eventId, orderId, request: dryRun.payload, response };
   await log(result);
   return result;
 }
@@ -126,7 +163,8 @@ export async function place(input) {
 export async function close(input) {
   const payload = closePayload(input);
   const response = await request('/api/v2/mix/order/close-positions', { method: 'POST', body: payload });
-  const result = { phase: 'close', symbol: input.symbol, request: payload, response };
+  const orderId = closeOrderId(input.symbol, response);
+  const result = { phase: 'close', symbol: input.symbol, orderId, request: payload, response };
   await log(result);
   return result;
 }
@@ -142,15 +180,11 @@ async function cli() {
     console.log(JSON.stringify(await previewOpen({ symbol, qty }), null, 2));
     return;
   }
-  if (command === '--open') {
-    console.log(JSON.stringify(await place({ symbol, qty }), null, 2));
-    return;
-  }
   if (command === '--close') {
     console.log(JSON.stringify(await close({ symbol }), null, 2));
     return;
   }
-  throw new Error('Use --check [symbol], --dry-run SYMBOL QTY, --open SYMBOL QTY, or --close SYMBOL');
+  throw new Error('Use --check [symbol], --dry-run SYMBOL QTY, or --close SYMBOL. Opening requires a mandate stamp through the cycle runner.');
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) cli().catch((error) => {

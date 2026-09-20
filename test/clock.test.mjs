@@ -23,7 +23,13 @@ test('dark predicate matches window', () => {
 });
 
 test('next unwind is the next trading day at 09:29 ET', () => {
-  assert.equal(state('2026-09-26T01:00:00.000Z').nextUnwind, '2026-09-28T13:29:00.000Z');
+  assert.equal(state('2026-09-26T01:00:42.000Z').nextUnwind, '2026-09-28T13:29:00.000Z');
+});
+
+test('restart during the unwind minute marks the unwind overdue now', () => {
+  const result = state('2026-09-22T13:29:01.000Z');
+  assert.equal(result.nextUnwind, '2026-09-22T13:29:00.000Z');
+  assert.equal(result.msToUnwind, -1000);
 });
 
 test('next dark start skips the weekend', () => {

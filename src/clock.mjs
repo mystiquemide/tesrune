@@ -49,10 +49,18 @@ function minuteOfDay(value) {
   return value.hour * 60 + value.minute;
 }
 
-function findNext(now, hour, minute, predicate) {
-  const start = now.getTime();
+function minuteStart(date) {
+  const value = new Date(date);
+  value.setUTCSeconds(0, 0);
+  return value;
+}
+
+function findNext(now, hour, minute, predicate, allowCurrentMinute = false) {
+  const start = minuteStart(now);
+  const current = local(now);
+  if (allowCurrentMinute && current.hour === hour && current.minute === minute && predicate(current)) return start;
   for (let offset = 0; offset <= 8 * 24 * 60; offset += 1) {
-    const candidate = new Date(start + offset * 60_000);
+    const candidate = new Date(start.getTime() + offset * 60_000);
     const value = local(candidate);
     if (value.hour === hour && value.minute === minute && predicate(value) && candidate > now) return candidate;
   }
@@ -80,7 +88,7 @@ export function state(input = now()) {
   if (tradingDay && minute >= 240 && minute < 570) window = 'pre_bell';
   if (tradingDay && minute >= 570 && minute < 1200) window = 'broker_open';
   const nextBell = findNext(current, 9, 30, marketDay);
-  const nextUnwind = findNext(current, 9, 29, marketDay);
+  const nextUnwind = findNext(current, 9, 29, marketDay, true);
   const nextDarkStart = findNext(current, 20, 0, marketDay);
   return {
     now: current.toISOString(),
