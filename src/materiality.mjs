@@ -74,7 +74,8 @@ function classifierInput(event, holding, context) {
       title: String(event.title ?? '').slice(0, 500),
       body: String(event.body ?? '').slice(0, 6_000),
       itemCodes: event.meta?.itemCodes ?? [],
-      syntheticFixture: Boolean(event.meta?.synthetic)
+      syntheticFixture: Boolean(event.meta?.synthetic),
+      historicalReplay: Boolean(event.meta?.historicalReplay)
     },
     market: {
       underlyingClose: context?.quote?.close ?? null,

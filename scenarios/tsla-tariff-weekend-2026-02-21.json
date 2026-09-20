@@ -1,0 +1,45 @@
+{
+  "id": "tsla-tariff-weekend-2026-02-21",
+  "label": "Saturday tariff escalation before the Monday TSLA gap",
+  "mode": "historical_replay",
+  "ticker": "TSLA",
+  "event": {
+    "id": "cnn-2026-02-21-global-tariff-15",
+    "ts": "2026-02-21T16:59:00.000Z",
+    "source": "CNN Business",
+    "title": "Global tariff increased from 10% to 15%, effective immediately",
+    "body": "On Saturday, President Trump announced that the global tariff imposed a day earlier would rise from 10% to 15%, effective immediately, following an adverse Supreme Court ruling on Friday.",
+    "url": "https://www.cnn.com/2026/02/21/business/trump-global-tariffs-increase-supreme-court",
+    "meta": {
+      "historicalReplay": true
+    }
+  },
+  "decisionAt": "2026-02-21T17:00:00.000Z",
+  "unwindAt": "2026-02-23T14:29:00.000Z",
+  "holdingQty": 0.04,
+  "historical": {
+    "priceSource": "Bitget MCP equity_price_historical (provider: Massive)",
+    "previousClose": 411.71,
+    "fridayDate": "2026-02-20",
+    "fridayClose": 411.82,
+    "mondayDate": "2026-02-23",
+    "mondayOpen": 407.285,
+    "mondayClose": 399.83,
+    "gapPercent": -1.1012092661842554,
+    "perpSource": "Bitget public TSLAUSDT 4H candles",
+    "entryCandle": {
+      "ts": "2026-02-21T16:00:00.000Z",
+      "open": 411.3,
+      "high": 412,
+      "low": 410.92,
+      "close": 411.35
+    },
+    "unwindCandle": {
+      "ts": "2026-02-23T12:00:00.000Z",
+      "open": 408.2,
+      "high": 408.26,
+      "low": 401.03,
+      "close": 401.18
+    }
+  }
+}

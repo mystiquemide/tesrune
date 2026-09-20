@@ -82,7 +82,7 @@ export async function processEvents({ events, holdings, contexts = {}, clock = c
     for (const holding of holdings.filter(({ ticker }) => event.tickers?.includes(ticker))) {
       if (pending.some((proposal) => proposal.eventId === event.id && proposal.ticker === holding.ticker)) continue;
       const decision = await evaluateEvent({ event, holding, context: contexts[holding.ticker] ?? {}, clock, openHedges, classifyFn });
-      const entry = { eventId: event.id, ticker: holding.ticker, syntheticFixture: Boolean(event.meta?.synthetic), decision };
+      const entry = { eventId: event.id, ticker: holding.ticker, syntheticFixture: Boolean(event.meta?.synthetic), historicalReplay: Boolean(event.meta?.historicalReplay), decision };
       if (decision.type === 'decline') await append(PATHS.declines, entry);
       if (decision.type === 'proposal') {
         pending.push({ ...decision, pendingStatus: 'pending' });
@@ -114,7 +114,8 @@ export async function confirmProposal(stamp, { execute = place, schedule = sched
       await persistPending(pending);
       throw error;
     }
-    const cycle = { cycleId: proposal.id, status: 'open', proposal, fill, openedAt: new Date().toISOString(), mode: proposal.event?.syntheticFixture ? 'synthetic' : 'live' };
+    const mode = proposal.event?.historicalReplay ? 'replay' : proposal.event?.syntheticFixture ? 'synthetic' : 'live';
+    const cycle = { cycleId: proposal.id, status: 'open', proposal, fill, openedAt: new Date().toISOString(), mode };
     await append(PATHS.cycles, cycle);
     await schedule(cycle);
     pending.splice(index, 1);

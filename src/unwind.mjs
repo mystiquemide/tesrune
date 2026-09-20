@@ -66,8 +66,8 @@ function scheduleFromCycle(cycle) {
     unwindAt: proposal.unwindAt,
     openingOrderId: cycle.fill?.orderId ?? cycle.fill?.response?.orderId ?? null,
     proposal,
-    mode: cycle.mode ?? (proposal.event?.syntheticFixture ? 'synthetic' : 'live'),
-    status: 'armed',
+    mode: cycle.mode ?? (proposal.event?.historicalReplay ? 'replay' : proposal.event?.syntheticFixture ? 'synthetic' : 'live'),
+    status: (cycle.mode === 'replay' || proposal.event?.historicalReplay) ? 'held-replay' : 'armed',
     attempts: 0,
     armedAt: new Date().toISOString()
   };
@@ -76,7 +76,7 @@ function scheduleFromCycle(cycle) {
 export async function scheduleUnwind(cycle) {
   if (!cycle?.cycleId || !cycle?.proposal?.unwindAt) throw new Error('An open cycle with unwindAt is required');
   const rows = await schedules();
-  if (!rows.some(({ cycleId, status }) => cycleId === cycle.cycleId && ['armed', 'closing'].includes(status))) {
+  if (!rows.some(({ cycleId, status }) => cycleId === cycle.cycleId && ['armed', 'closing', 'held-replay'].includes(status))) {
     rows.push(scheduleFromCycle(cycle));
     await persist(rows);
   }
@@ -223,6 +223,14 @@ export async function unwindItem(item, options = {}) {
   } finally {
     locks.delete(item.cycleId);
   }
+}
+
+export async function activateReplay(cycleId, options = {}) {
+  const rows = await schedules();
+  const item = rows.find((row) => row.cycleId === cycleId && row.status === 'held-replay');
+  if (!item) throw new Error(`Held replay schedule ${cycleId} not found`);
+  await updateSchedule(cycleId, { status: 'armed', replayActivatedAt: new Date().toISOString() });
+  return runDue(new Date(new Date(item.unwindAt).getTime() + 1), options);
 }
 
 export async function runDue(now = new Date(), options = {}) {

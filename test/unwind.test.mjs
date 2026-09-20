@@ -85,6 +85,28 @@ test('records an explicit failure after bounded retries', async () => {
   delete process.env.TESRUNE_DATA_DIR;
 });
 
+test('holds replay schedules until an explicit clock jump', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'tesrune-unwind-replay-'));
+  process.env.TESRUNE_DATA_DIR = directory;
+  const module = await import(`../src/unwind.mjs?replay=${Date.now()}`);
+  const replayCycle = { ...cycle, cycleId: 'cycle-replay', mode: 'replay', proposal: { ...proposal, event: { historicalReplay: true } } };
+  await module.scheduleUnwind(replayCycle);
+  let closeCalls = 0;
+  const options = {
+    positionsFn: async () => closeCalls ? [] : [{ symbol: 'TSLAUSDT', holdSide: 'short', total: '0.02' }],
+    closeFn: async () => { closeCalls += 1; return { orderId: 'close-replay' }; },
+    detailFn: async (_symbol, orderId) => orderId === 'open-1' ? { priceAvg: '364.18', baseVolume: '0.02' } : { priceAvg: '364.19', baseVolume: '0.02', totalProfits: '-0.0002' },
+    quoteFn: async () => ({ prev_close: 366.2 }),
+    waitFn: async () => {}
+  };
+  assert.deepEqual(await module.runDue(new Date('2026-09-23T00:00:00Z'), options), []);
+  assert.equal(closeCalls, 0);
+  const [closed] = await module.activateReplay('cycle-replay', options);
+  assert.equal(closed.status, 'closed');
+  assert.equal(closeCalls, 1);
+  delete process.env.TESRUNE_DATA_DIR;
+});
+
 test('recovers an unscheduled open cycle after restart', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'tesrune-unwind-recovery-'));
   const recovered = { ...cycle, cycleId: 'cycle-recovered', proposal: { ...proposal, id: 'cycle-recovered', pendingStatus: 'executing' } };
