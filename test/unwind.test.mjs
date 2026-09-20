@@ -45,6 +45,34 @@ test('does not claim the next cash open before it occurs', () => {
   assert.equal(result.labels.underlying, 'pending next cash-session open');
 });
 
+test('reconciles the underlying gap and hedge offset only after the cash session opens', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'tesrune-reconcile-'));
+  process.env.TESRUNE_DATA_DIR = directory;
+  const module = await import(`../src/unwind.mjs?reconcile=${Date.now()}`);
+  const closed = {
+    cycleId: 'live-1', status: 'closed', mode: 'live',
+    proposal: { ticker: 'TSLA', symbol: 'TSLAUSDT', qty: 0.02 },
+    pnl: { qty: 0.02, netHedgePnl: 0.09, previousClose: 411.82, nextOpen: null, underlyingGapPnl: null, labels: { underlying: 'pending next cash-session open' } }
+  };
+  await writeFile(join(directory, 'cycles.jsonl'), `${JSON.stringify({ ts: '2026-02-23T14:29:00Z', ...closed })}\n`);
+  const quoteFn = async () => ({ prev_close: 411.82, open: 407.285 });
+
+  // While dark, nothing is reconciled
+  assert.deepEqual(await module.reconcileGaps({ clock: { window: 'dark' }, quoteFn }), []);
+
+  // Once the cash session is open, the gap and offset are computed from the real open
+  const updated = await module.reconcileGaps({ clock: { window: 'broker_open' }, quoteFn });
+  assert.equal(updated.length, 1);
+  const gap = updated[0].underlyingGapPnl;
+  assert.ok(Math.abs(gap - ((407.285 - 411.82) * 0.02)) < 1e-9);
+  assert.ok(updated[0].effectiveness.offsetPct > 0);
+  assert.match(await readFile(join(directory, 'cycles.jsonl'), 'utf8'), /"underlying":"verified cash-session open"/);
+
+  // A second pass does not double-reconcile
+  assert.deepEqual(await module.reconcileGaps({ clock: { window: 'broker_open' }, quoteFn }), []);
+  delete process.env.TESRUNE_DATA_DIR;
+});
+
 test('persists, executes and completes a due unwind', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'tesrune-unwind-success-'));
   process.env.TESRUNE_DATA_DIR = directory;

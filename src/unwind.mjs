@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { close, orderDetail, positions, ticker } from './execution.mjs';
 import { equityQuote } from './feeds.mjs';
+import { state as clockState } from './clock.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA_DIR = process.env.TESRUNE_DATA_DIR ?? join(ROOT, 'data');
@@ -141,6 +142,42 @@ export function calculatePnl({ proposal, openDetail, closeDetail, quote, session
   };
 }
 
+export function hedgeEffectiveness(pnl) {
+  const gap = pnl?.underlyingGapPnl;
+  const net = pnl?.netHedgePnl;
+  if (gap === null || gap === undefined || net === null || net === undefined) return null;
+  const combinedAfterHedge = decimal(gap + net);
+  const offsetPct = gap < 0 ? decimal(Math.min(1, net / -gap) * 100, 2) : null;
+  return { gapOnHedgedShares: decimal(gap), hedgeNetPnl: decimal(net), combinedAfterHedge, offsetPct, label: 'gap measured on the hedged quantity against the verified cash-session open' };
+}
+
+// After the cash session opens, fill in the real underlying gap and hedge offset
+// for completed live hedges that were left pending. Replay and synthetic cycles
+// are excluded because their outcome is a labeled counterfactual, not a live open.
+export async function reconcileGaps({ clock = clockState(), quoteFn = equityQuote } = {}) {
+  const cycles = latestStates(await readJsonl(PATHS.cycles));
+  const updated = [];
+  if (clock.window !== 'broker_open') return updated;
+  for (const c of cycles) {
+    if (c.status !== 'closed' || c.mode !== 'live') continue;
+    if (!c.pnl || c.pnl.underlyingGapPnl !== null || c.pnl.underlyingGapPnl === undefined) continue;
+    const name = c.proposal?.ticker;
+    const qty = c.pnl.qty;
+    const previousClose = c.pnl.previousClose;
+    if (!name || qty === null || previousClose === null) continue;
+    let quote;
+    try { quote = await quoteFn(name); } catch { continue; }
+    const nextOpen = number(quote?.open);
+    if (nextOpen === null) continue;
+    const underlyingGapPnl = decimal((nextOpen - previousClose) * qty);
+    const pnl = { ...c.pnl, nextOpen, underlyingGapPnl, labels: { ...c.pnl.labels, underlying: 'verified cash-session open' } };
+    const effectiveness = hedgeEffectiveness(pnl);
+    await append(PATHS.cycles, { cycleId: c.cycleId, status: 'closed', pnl, effectiveness, reconciledAt: new Date().toISOString(), mode: c.mode });
+    updated.push({ cycleId: c.cycleId, underlyingGapPnl, effectiveness });
+  }
+  return updated;
+}
+
 async function updateSchedule(cycleId, update) {
   const rows = await schedules();
   const index = rows.findIndex((row) => row.cycleId === cycleId && !['complete', 'failed'].includes(row.status));
@@ -245,7 +282,7 @@ export async function startScheduler(options = {}) {
   await reconcileSchedules();
   const intervalMs = options.intervalMs ?? 15_000;
   await runDue(new Date(), options);
-  return setInterval(() => runDue(new Date(), options).catch((error) => append(PATHS.failures, { status: 'scheduler_error', error: error.message })), intervalMs);
+  return setInterval(() => Promise.allSettled([runDue(new Date(), options), reconcileGaps().catch(() => [])]).then((r) => { if (r[0].status === 'rejected') return append(PATHS.failures, { status: 'scheduler_error', error: r[0].reason?.message }); }), intervalMs);
 }
 
 async function cli() {

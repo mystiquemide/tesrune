@@ -7,7 +7,7 @@ import { state as clockState } from './clock.mjs';
 import { confirmProposal, openCycleStates, pendingProposals, queueDecision, rejectProposal, runOnce } from './cycle.mjs';
 import { propose } from './mandate.mjs';
 import { jumpToUnwind, loadScenario, prepareReplay } from './replay.mjs';
-import { schedules, startScheduler } from './unwind.mjs';
+import { reconcileGaps, schedules, startScheduler } from './unwind.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA_DIR = process.env.TESRUNE_DATA_DIR ?? join(ROOT, 'data');
@@ -231,6 +231,7 @@ export async function handle(req, res) {
       await writeReplaySession({ ...session, artifact });
       return send(res, 200, artifact);
     }
+    if (req.method === 'POST' && url.pathname === '/api/cycle/reconcile') return send(res, 200, { reconciled: await reconcileGaps() });
     if (req.method === 'POST' && url.pathname === '/api/run') return send(res, 200, await runOnce());
     if (req.method === 'GET' && !url.pathname.startsWith('/api/')) return serveStatic(url.pathname, res);
     return send(res, 404, { error: 'Not found' });
