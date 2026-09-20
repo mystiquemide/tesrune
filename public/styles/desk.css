@@ -253,9 +253,25 @@ body.desk-armed .feed-verdict.material { background: rgba(245, 185, 66, 0.2); co
 .down { color: var(--pnl-down); }
 
 @media (max-width: 980px) {
-  .desk-body { height: auto; overflow: visible; }
+  .desk-body { height: auto; min-height: 100vh; overflow: visible; }
+  .desk-header { flex-wrap: wrap; gap: var(--s-12); padding: var(--s-12) var(--s-16); }
   .desk-main { grid-template-columns: 1fr; }
   .desk-col + .desk-col { border-left: 0; border-top: 1px solid var(--border); }
   .desk-col { overflow: visible; }
   .col-scroll { overflow: visible; }
+  .desk-conv { overflow: visible; min-height: 46vh; }
+}
+@media (max-width: 560px) {
+  .desk-header { padding: var(--s-8) var(--s-12); gap: var(--s-8); }
+  .desk-status { width: 100%; gap: var(--s-12); }
+  .desk-status .stat .v { font-size: var(--text-meta); }
+  .desk-back { margin-left: auto; }
+  .col-head, .col-scroll { padding-left: var(--s-16); padding-right: var(--s-16); }
+  .desk-dock { padding-left: var(--s-12); padding-right: var(--s-12); }
+  .card { margin-left: var(--s-12); margin-right: var(--s-12); }
+  .card-actions { flex-wrap: wrap; }
+  .card-actions .btn { flex: 1 1 130px; }
+  .scorecard-grid { grid-template-columns: 1fr 1fr; }
+  .composer-form { flex-direction: column; }
+  .composer-form .btn { width: 100%; }
 }
