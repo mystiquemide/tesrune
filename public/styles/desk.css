@@ -221,6 +221,17 @@ body.desk-armed .check.clipped { background: rgba(245, 185, 66, 0.18); color: va
 .chip-hedgeable { background: #E9F7F0; color: #067a53; }
 .chip-unlisted { background: var(--open-fill); color: var(--text-2); }
 
+/* Live feed */
+.feed-sec { margin-top: var(--s-24); border-top: 1px solid var(--border); padding-top: var(--s-16); }
+.feed-title { font-family: var(--font-mono); font-size: var(--text-meta); letter-spacing: var(--track-meta); text-transform: uppercase; color: var(--text-3); margin-bottom: var(--s-8); }
+.feed-item { padding: var(--s-8) 0; border-left: 2px solid var(--border); padding-left: var(--s-12); margin-bottom: var(--s-8); }
+.feed-meta { display: flex; gap: var(--s-8); align-items: center; flex-wrap: wrap; }
+.feed-src { font-family: var(--font-mono); font-size: var(--text-meta); letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-3); }
+.feed-title-line { font-size: var(--text-body-sm); color: var(--display); margin-top: 3px; line-height: 1.4; }
+.feed-verdict { font-family: var(--font-mono); font-size: var(--text-meta); letter-spacing: 0.03em; text-transform: uppercase; padding: 2px 7px; border-radius: var(--r-pill); background: var(--open-fill); color: var(--text-2); }
+.feed-verdict.material { background: rgba(245, 185, 66, 0.18); color: #8A6410; }
+body.desk-armed .feed-verdict.material { background: rgba(245, 185, 66, 0.2); color: var(--accent); }
+
 /* Scorecard */
 .scorecard { border: 1px solid var(--border); border-radius: var(--r-card); background: var(--surface); padding: var(--s-12) var(--s-16); margin-bottom: var(--s-16); }
 .scorecard-title { font-family: var(--font-mono); font-size: var(--text-meta); letter-spacing: var(--track-meta); text-transform: uppercase; color: var(--text-3); margin-bottom: var(--s-8); }

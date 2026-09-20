@@ -130,21 +130,31 @@ function buildScorecard(cycles, declines, proposals) {
   };
 }
 
+function buildFeed(events, verdicts) {
+  const vmap = new Map(verdicts.map((v) => [v.eventId, v.verdict]));
+  return events.slice(-14).reverse().map((e) => ({
+    id: e.id, ts: e.ts, source: e.source, tickers: e.tickers ?? [], title: e.title, url: e.url ?? '',
+    verdict: vmap.get(e.id) ? { class: vmap.get(e.id).class, direction: vmap.get(e.id).direction, confidence: vmap.get(e.id).confidence } : null
+  }));
+}
+
 async function statePayload() {
-  const [book, pending, scheduleRows, cycles, declines, proposals, events, replays, replaySession] = await Promise.all([
+  const [book, pending, scheduleRows, cycles, declines, proposals, events, verdicts, replays, replaySession] = await Promise.all([
     storedBook(),
     pendingProposals(),
     schedules(),
     readJsonl(LOGS.cycles, 200),
     readJsonl(LOGS.declines, 100),
     readJsonl(LOGS.proposals, 200),
-    readJsonl(LOGS.events, 20),
+    readJsonl(LOGS.events, 40),
+    readJsonl(LOGS.verdicts, 80),
     readJsonl(LOGS.replays, 10),
     readJson(REPLAY_SESSION)
   ]);
   const mergedCycles = mergeCycles(cycles);
   return {
     scorecard: buildScorecard(mergedCycles, declines, proposals),
+    feed: buildFeed(events, verdicts),
     product: 'Tesrune',
     venue: 'Bitget demo trading',
     clock: clockState(),

@@ -99,24 +99,50 @@ function renderBook(state) {
     e.append(el('strong', null, 'Nothing on the book. '));
     e.append(document.createTextNode("Hand me the positions you can't trade overnight and I'll map each one to its Bitget perp."));
     col.append(e);
+  } else {
+    for (const h of holdings) {
+      const row = el('div', 'book-row');
+      const top = el('div', 'book-row-top');
+      top.append(el('span', 'book-ticker', h.ticker));
+      top.append(el('span', 'book-qty', String(h.qty)));
+      row.append(top);
+      const meta = el('div', 'book-meta');
+      meta.append(el('span', 'book-sym', h.symbol || `${h.ticker}USDT`));
+      meta.append(el('span', h.status === 'hedgeable' ? 'chip chip-hedgeable' : 'chip chip-unlisted', h.status || 'unknown'));
+      row.append(meta);
+      if (h.mark !== null && h.mark !== undefined) row.append(line('book-line', 'Mark', String(h.mark)));
+      const notional = money(h.notional);
+      if (notional) row.append(line('book-line', 'Notional', `${notional} USDT`));
+      row.append(line('book-line', 'Open hedge', String(h.openShortQty ?? 0)));
+      col.append(row);
+    }
+  }
+  renderFeed(col, state.feed);
+}
+
+function renderFeed(col, feed) {
+  const sec = el('div', 'feed-sec');
+  sec.append(el('div', 'feed-title', 'Live feed'));
+  if (!Array.isArray(feed) || !feed.length) {
+    sec.append(el('p', 'empty', 'No events yet. During dark hours I poll Bitget MCP news, SEC 8-K filings, and perp moves.'));
+    col.append(sec);
     return;
   }
-  for (const h of holdings) {
-    const row = el('div', 'book-row');
-    const top = el('div', 'book-row-top');
-    top.append(el('span', 'book-ticker', h.ticker));
-    top.append(el('span', 'book-qty', String(h.qty)));
-    row.append(top);
-    const meta = el('div', 'book-meta');
-    meta.append(el('span', 'book-sym', h.symbol || `${h.ticker}USDT`));
-    meta.append(el('span', h.status === 'hedgeable' ? 'chip chip-hedgeable' : 'chip chip-unlisted', h.status || 'unknown'));
-    row.append(meta);
-    if (h.mark !== null && h.mark !== undefined) row.append(line('book-line', 'Mark', String(h.mark)));
-    const notional = money(h.notional);
-    if (notional) row.append(line('book-line', 'Notional', `${notional} USDT`));
-    row.append(line('book-line', 'Open hedge', String(h.openShortQty ?? 0)));
-    col.append(row);
+  for (const e of feed) {
+    const item = el('div', 'feed-item');
+    const meta = el('div', 'feed-meta');
+    meta.append(el('span', 'feed-src', e.source || 'source'));
+    if (e.tickers && e.tickers.length) meta.append(el('span', 'feed-src', e.tickers.join(' ')));
+    if (etHM(e.ts)) meta.append(el('span', 'feed-src', `${etHM(e.ts)} ET`));
+    if (e.verdict) {
+      const cls = e.verdict.class === 'material' ? 'feed-verdict material' : 'feed-verdict';
+      meta.append(el('span', cls, `${e.verdict.class} ${e.verdict.direction} ${e.verdict.confidence}`));
+    }
+    item.append(meta);
+    item.append(el('div', 'feed-title-line', e.title || e.id));
+    sec.append(item);
   }
+  col.append(sec);
 }
 
 function openBookForm(prefill) {
