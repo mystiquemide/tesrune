@@ -67,3 +67,23 @@ test('marks a live-only instrument as unavailable on the proof venue', async () 
   assert.equal(row.liveListed, true);
   assert.equal(row.mark, null);
 });
+
+test('enriches an unlisted name into a labeled index proxy only when enabled', async () => {
+  const proxyDeps = {
+    ...dependencies,
+    getDemoContracts: async () => ['TSLAUSDT', 'NDX100USDT'].map((symbol) => ({ symbol, minTradeNum: '0.01', sizeMultiplier: '0.01', minTradeUSDT: '5', maxLever: '25' })),
+    getTicker: async (symbol) => ({ symbol, markPrice: { TSLAUSDT: '364.25', NDX100USDT: '20000' }[symbol] }),
+    proxyEnabled: true,
+    resolveProxy: async () => ({ proxySymbol: 'NDX100USDT', beta: 1.1, betaSampleSize: 60, equityPrice: 900 })
+  };
+  const [row] = await resolveHoldings([{ ticker: 'COST', qty: 10 }], proxyDeps);
+  assert.equal(row.status, 'proxy');
+  assert.equal(row.proxySymbol, 'NDX100USDT');
+  assert.equal(row.beta, 1.1);
+  assert.equal(row.proxyMark, 20000);
+  assert.match(row.proxyLabel, /Correlation hedge via NDX100USDT/);
+
+  // Same inputs, proxy disabled: stays unlisted
+  const [plain] = await resolveHoldings([{ ticker: 'COST', qty: 10 }], { ...proxyDeps, proxyEnabled: false });
+  assert.equal(plain.status, 'unlisted');
+});

@@ -166,6 +166,15 @@ export async function equityQuote(ticker, client = new BitgetMcpClient()) {
   return data?.results?.[0] ?? null;
 }
 
+// Best-effort historical closes for beta estimation. Returns [] on any shape it
+// does not recognize, so callers degrade instead of inventing data.
+export async function equityHistorical(ticker, client = new BitgetMcpClient()) {
+  const data = await client.query('equity_price_historical', { symbol: ticker });
+  const rows = data?.results ?? data?.data ?? [];
+  if (!Array.isArray(rows)) return [];
+  return rows.map((r) => Number(r.close ?? r.c ?? r.adjClose ?? r.close_price)).filter(Number.isFinite);
+}
+
 export function priceMoveEvent(ticker, mark, quote, threshold = 0.02) {
   const close = Number(quote?.close ?? quote?.prev_close);
   const live = Number(mark?.markPrice ?? mark?.lastPr);

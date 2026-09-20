@@ -2,6 +2,23 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { contracts, positions, ticker } from './execution.mjs';
+import { equityHistorical, equityQuote } from './feeds.mjs';
+import { estimateBeta } from './proxy.mjs';
+
+// Default beta resolver for unlisted names. Real MCP data only; returns null on
+// anything missing so the name stays unlisted rather than getting a fake beta.
+async function defaultResolveProxy(name) {
+  const indexEquity = process.env.TESRUNE_PROXY_INDEX_EQUITY ?? 'QQQ';
+  const [quote, nameHist, indexHist] = await Promise.all([
+    equityQuote(name).catch(() => null),
+    equityHistorical(name).catch(() => []),
+    equityHistorical(indexEquity).catch(() => [])
+  ]);
+  const equityPrice = Number(quote?.close ?? quote?.last ?? quote?.price);
+  const beta = estimateBeta(nameHist, indexHist);
+  if (!beta || !Number.isFinite(equityPrice) || equityPrice <= 0) return null;
+  return { proxySymbol: process.env.TESRUNE_PROXY_INDEX ?? 'NDX100USDT', beta: beta.beta, betaSampleSize: beta.sampleSize, equityPrice };
+}
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DATA_DIR = process.env.TESRUNE_DATA_DIR ?? join(ROOT, 'data');
@@ -96,9 +113,12 @@ export async function resolveHoldings(holdings, dependencies = {}) {
   const getLiveContracts = dependencies.getLiveContracts ?? liveContracts;
   const getTicker = dependencies.getTicker ?? ticker;
   const getPositions = dependencies.getPositions ?? positions;
+  const resolveProxy = dependencies.resolveProxy ?? defaultResolveProxy;
+  const proxyEnabled = dependencies.proxyEnabled ?? process.env.TESRUNE_PROXY_HEDGE === '1';
   const [demoRows, liveRows, openPositions] = await Promise.all([getDemoContracts(), getLiveContracts(), getPositions()]);
   const demo = new Map(demoRows.map((contract) => [contract.symbol, contract]));
   const live = new Set(liveRows.map((contract) => contract.symbol));
+  const contractSpec = (c) => ({ minQty: Number(c.minTradeNum), qtyIncrement: Number(c.sizeMultiplier), minNotional: Number(c.minTradeUSDT), maxLeverage: Number(c.maxLever) });
   return Promise.all(rows.map(async (holding) => {
     const symbol = `${holding.ticker}USDT`;
     const contract = demo.get(symbol);
@@ -107,7 +127,7 @@ export async function resolveHoldings(holdings, dependencies = {}) {
     const market = demoListed ? await getTicker(symbol) : null;
     const mark = market ? Number(market.markPrice ?? market.lastPr) : null;
     const openShortQty = openPositions.filter((position) => position.symbol === symbol && position.holdSide === 'short').reduce((sum, position) => sum + Number(position.total ?? 0), 0);
-    return {
+    const base = {
       ...holding,
       symbol,
       status: demoListed ? 'hedgeable' : 'unlisted',
@@ -116,7 +136,28 @@ export async function resolveHoldings(holdings, dependencies = {}) {
       mark,
       notional: mark === null ? null : holding.qty * mark,
       openShortQty,
-      contract: contract ? { minQty: Number(contract.minTradeNum), qtyIncrement: Number(contract.sizeMultiplier), minNotional: Number(contract.minTradeUSDT), maxLeverage: Number(contract.maxLever) } : null
+      contract: contract ? contractSpec(contract) : null
+    };
+    if (demoListed || !proxyEnabled) return base;
+
+    // Unlisted name: try a labeled index-proxy hedge. Degrade to unlisted on any gap.
+    const proxy = await resolveProxy(holding.ticker).catch(() => null);
+    const proxyContract = proxy ? demo.get(proxy.proxySymbol) : null;
+    if (!proxy || !proxyContract) return base;
+    const indexMarket = await getTicker(proxy.proxySymbol).catch(() => null);
+    const proxyMark = indexMarket ? Number(indexMarket.markPrice ?? indexMarket.lastPr) : null;
+    if (!Number.isFinite(proxyMark) || proxyMark <= 0) return base;
+    return {
+      ...base,
+      status: 'proxy',
+      proxySymbol: proxy.proxySymbol,
+      beta: proxy.beta,
+      betaSampleSize: proxy.betaSampleSize ?? null,
+      equityPrice: proxy.equityPrice,
+      proxyMark,
+      proxyContract: contractSpec(proxyContract),
+      notional: proxy.equityPrice ? holding.qty * proxy.equityPrice : base.notional,
+      proxyLabel: `Correlation hedge via ${proxy.proxySymbol}, beta ${proxy.beta} estimated from ${proxy.betaSampleSize ?? 'n/a'} sessions`
     };
   }));
 }

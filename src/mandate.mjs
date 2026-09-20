@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { createMandateStamp } from './mandate-stamp.mjs';
+import { proxySizing } from './proxy.mjs';
 
 const TAKER_FEE_RATE = 0.0006;
 const MIN_CONFIDENCE = 0.6;
@@ -35,6 +36,67 @@ function fundingSettlements(start, end) {
   return count;
 }
 
+function proposeProxy({ holding, verdict, clockState, openHedges, event, fundingRate, inputs }) {
+  const heldQty = Number(holding.qty);
+  const equityPrice = Number(holding.equityPrice);
+  const beta = Number(holding.beta);
+  const indexMark = Number(holding.proxyMark);
+  if (![heldQty, equityPrice, beta, indexMark].every(Number.isFinite) || heldQty <= 0 || equityPrice <= 0 || beta <= 0 || indexMark <= 0) {
+    return decline('UNLISTED', `No usable proxy sizing for ${holding.ticker}.`, inputs);
+  }
+  const heldNotional = decimal(heldQty * equityPrice);
+  const contract = holding.proxyContract ?? {};
+  const sizing = proxySizing({ heldNotional, beta, indexMark, increment: Number(contract.qtyIncrement ?? 0.01), minQty: Number(contract.minQty ?? contract.qtyIncrement ?? 0.01), minNotional: Number(contract.minNotional ?? 5) });
+  if (!sizing.ok) return decline('MIN_SIZE', `Proxy hedge for ${holding.ticker}: ${sizing.reason}.`, { ...inputs, proxyQty: sizing.qty, notional: sizing.notional });
+  if (openHedges.some((hedge) => hedge.symbol === holding.proxySymbol && hedge.status !== 'closed')) {
+    return decline('DUPLICATE', `${holding.proxySymbol} already has an open proxy hedge.`, inputs);
+  }
+  const createdAt = new Date(clockState.now).toISOString();
+  const unwindAt = clockState.nextUnwind;
+  const settlements = fundingSettlements(createdAt, unwindAt);
+  const funding = Number(fundingRate);
+  const estimatedFunding = Number.isFinite(funding) ? decimal(sizing.notional * funding * settlements) : 0;
+  const order = { symbol: holding.proxySymbol, qty: sizing.qty, side: 'sell', posSide: 'short', unwindAt, eventId: event?.id };
+  const feePerLeg = decimal(sizing.notional * TAKER_FEE_RATE);
+  const checks = [
+    { rule: 'NOT_DARK', result: 'pass' },
+    { rule: 'NOT_MATERIAL', result: 'pass' },
+    { rule: 'DIRECTION_UP', result: 'pass' },
+    { rule: 'UNLISTED', result: 'proxy', proxyOf: holding.ticker, via: holding.proxySymbol },
+    { rule: 'CAP', result: 'beta-scaled', beta: decimal(beta, 4), targetNotional: sizing.targetNotional },
+    { rule: 'MIN_SIZE', result: 'pass' },
+    { rule: 'DUPLICATE', result: 'pass' }
+  ];
+  const proposal = {
+    type: 'proposal',
+    id: randomUUID(),
+    createdAt,
+    ticker: holding.ticker,
+    ...order,
+    mark: indexMark,
+    notional: sizing.notional,
+    hedgeType: 'proxy',
+    proxyFor: holding.ticker,
+    beta: decimal(beta, 4),
+    betaSampleSize: holding.betaSampleSize ?? null,
+    heldNotional,
+    targetNotional: sizing.targetNotional,
+    basisRisk: `Correlation hedge via ${holding.proxySymbol}, not a same-name hedge. Beta is estimated from historical returns and carries basis risk.`,
+    takerFeeRate: TAKER_FEE_RATE,
+    openFee: feePerLeg,
+    unwindFee: feePerLeg,
+    estimatedFees: decimal(feePerLeg * 2),
+    fundingRate: Number.isFinite(funding) ? funding : 0,
+    fundingSettlements: settlements,
+    estimatedFunding,
+    event: event ? { id: event.id, ts: event.ts, source: event.source, title: event.title, url: event.url, syntheticFixture: Boolean(event.meta?.synthetic), historicalReplay: Boolean(event.meta?.historicalReplay) } : null,
+    verdict,
+    mandate: { checks }
+  };
+  proposal.mandate.stamp = createMandateStamp(order);
+  return proposal;
+}
+
 export function propose({ holding, verdict, clockState, openHedges = [], event, fundingRate = 0, requestedQty }) {
   const inputs = {
     ticker: holding?.ticker,
@@ -54,7 +116,10 @@ export function propose({ holding, verdict, clockState, openHedges = [], event, 
     return decline('NOT_MATERIAL', `Event classified ${verdict?.class ?? 'unknown'} at ${Number(verdict?.confidence ?? 0).toFixed(2)} confidence.`, inputs);
   }
   if (verdict?.direction !== 'down') return decline('DIRECTION_UP', `No downside hedge: direction is ${verdict?.direction ?? 'unclear'}.`, inputs);
-  if (holding?.status !== 'hedgeable' || !holding?.demoListed) return decline('UNLISTED', `${holding?.symbol ?? holding?.ticker ?? 'Instrument'} is not listed on the proof venue.`, inputs);
+  if (holding?.status !== 'hedgeable' || !holding?.demoListed) {
+    if (holding?.status === 'proxy') return proposeProxy({ holding, verdict, clockState, openHedges, event, fundingRate, inputs });
+    return decline('UNLISTED', `${holding?.symbol ?? holding?.ticker ?? 'Instrument'} is not listed on the proof venue.`, inputs);
+  }
 
   const heldQty = Number(holding.qty);
   const mark = Number(holding.mark);

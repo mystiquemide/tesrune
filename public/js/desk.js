@@ -220,9 +220,13 @@ function proposalCard(p) {
   const card = el('div', 'card armed');
   const head = el('div', 'card-head');
   head.append(el('span', 'card-title', `${p.symbol} · SHORT`));
-  const tag = p.event?.historicalReplay ? 'Replay' : p.event?.syntheticFixture ? 'Synthetic' : 'Live';
+  const tag = p.hedgeType === 'proxy' ? 'Proxy' : p.event?.historicalReplay ? 'Replay' : p.event?.syntheticFixture ? 'Synthetic' : 'Live';
   head.append(el('span', 'chip chip-unlisted', tag));
   card.append(head);
+  if (p.hedgeType === 'proxy') {
+    card.append(el('div', 'card-reason', p.basisRisk || `Correlation hedge via ${p.symbol} for ${p.proxyFor}. Not a same-name hedge.`));
+    card.append(line('card-line', 'Proxy for', `${p.proxyFor} (beta ${p.beta})`));
+  }
   if (p.clippedFrom !== undefined && p.clippedFrom !== null) {
     card.append(el('div', 'card-reason', `Request clipped from ${p.clippedFrom} to ${p.qty}. The mandate cannot make you net short.`));
   }
@@ -239,8 +243,11 @@ function proposalCard(p) {
   }
   const checks = el('div', 'checks');
   for (const c of p.mandate?.checks || []) {
-    const clipped = c.result === 'clipped';
-    const label = clipped ? `CAP ${c.clippedFrom} to ${c.qty}` : CHECK_LABEL[c.rule] || c.rule;
+    const clipped = c.result === 'clipped' || c.result === 'beta-scaled';
+    let label = CHECK_LABEL[c.rule] || c.rule;
+    if (c.result === 'clipped') label = `CAP ${c.clippedFrom} to ${c.qty}`;
+    else if (c.result === 'beta-scaled') label = `CAP beta ${c.beta}`;
+    else if (c.result === 'proxy') label = 'PROXY';
     checks.append(el('span', `check${clipped ? ' clipped' : ''}`, label));
   }
   card.append(checks);
