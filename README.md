@@ -54,32 +54,37 @@ The invariant is simple:
 6. **Bitget demo execution**: the signed proposal is sent to Bitget demo trading, which returns a real demo-engine fill using virtual funds.
 7. **09:29 unwind**: the scheduler closes the hedge before the opening bell and verifies the position is flat. The schedule re-arms after a restart.
 
-```text
-Held stock book
-      |
-      v
-Dark-hours events
-Bitget MCP + SEC + perp moves
-      |
-      v
-Qwen 3.8 Max
-materiality + direction only
-      |
-      v
-Deterministic mandate
-dark hours + material + downside + listed + delta cap + min size + duplicate guard
-      |
-      v
-Human confirmation
-      |
-      v
-Bitget demo fill
-      |
-      v
-Scheduled 09:29 ET unwind
-      |
-      v
-Cycle log + reconciliation + scorecard
+## Architecture
+
+The model interprets events, but it never has an exchange path. A deterministic mandate and explicit human confirmation sit between Qwen and execution.
+
+```mermaid
+flowchart LR
+    U["Trader / closed-broker book"] --> B["Book parser + Bitget perp resolver"]
+    B --> D["Desk state"]
+
+    MCP["Bitget MCP<br/>news · quotes · history"] --> F["Dark-hours event feed"]
+    SEC["SEC EDGAR<br/>8-K filings"] --> F
+    PM["Bitget stock perp<br/>mark moves"] --> F
+
+    F --> Q["Qwen 3.8 Max<br/>materiality · direction · confidence"]
+    D --> M["Deterministic mandate<br/>dark hours · material · downside · listed · delta cap · min size · duplicate"]
+    Q --> M
+
+    M -->|decline| L["Declines + scorecard"]
+    M -->|valid stamped proposal| H["Human confirmation"]
+
+    M --> T["Telegram alert<br/>review link only"]
+    T --> H
+
+    H --> E["Execution boundary<br/>validates mandate stamp"]
+    E --> BG["Bitget demo trading<br/>virtual funds · real demo fills"]
+    E -. optional flag-gated route .-> AH["Bitget Agent Hub"]
+
+    BG --> C["Open cycle + 09:29 schedule"]
+    C --> W["Unwind scheduler"]
+    W --> BG
+    W --> R["Cycle log + reconciliation + scorecard"]
 ```
 
 ## Execution boundary
