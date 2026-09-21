@@ -114,17 +114,18 @@ Remove the stock perps and the dark-hours hedge disappears.
 
 1. Open the [demo desk](https://tesrune.midelabs.xyz/desk).
 2. Choose the TSLA weekend tariff replay and click **Start replay**.
-3. Inspect Qwen's material-down decision and the deterministic proposal.
-4. Click **Confirm hedge**. Only now does Tesrune place the Bitget demo order.
-5. Click **Jump to 09:29** to run the scheduled unwind and verify the position is flat.
-6. Inspect **Cycles** for the open order, close order, hedge P&L, and status.
-7. Run the COIN replay to see the refusal path. Qwen classifies the event as already priced and Tesrune records a `NOT_MATERIAL` decline without placing an order.
+3. Inspect Qwen's event classification and the deterministic proposal.
+4. Click **Confirm hedge**. Only then can Tesrune place the Bitget demo order.
+5. Click **Jump to 09:29** to run the scheduled unwind and verify the replay hedge is flat.
+6. Inspect **Cycles** for the open order, close order, hedge P&L, and final status.
+7. Click **Reset demo** to clear the current replay session from the visible desk without deleting append-only evidence or touching live records.
+8. Run the COIN replay to demonstrate a refusal path. In verified runs Qwen has classified the event as already priced and the mandate recorded `NOT_MATERIAL`; because classification is model-driven, the exact refusal reason can vary between runs.
 
-The replay UI keeps historical counterfactual evidence separate from current Bitget demo fills.
+The replay UI keeps historical counterfactual evidence separate from current Bitget demo fills. Reset is blocked while a replay may still have an external hedge, so an active or unresolved hedge must be closed first.
 
 ## Verified evidence
 
-The current suite contains **83 tests**, covering the market clock, book parsing, event feeds, Qwen materiality handling, mandate rules, mandate stamps, demo execution, replay paths, unwind and restart recovery, gap reconciliation, desk state, Telegram alerts, and proxy sizing.
+The current suite contains **88 tests**, covering the market clock, book parsing, event feeds, Qwen materiality handling, mandate rules, mandate stamps, demo execution, replay paths, replay reset semantics, unwind and restart recovery, gap reconciliation, desk state and hydration, Telegram alerts, and proxy sizing.
 
 CI runs on Node 22 for every push and pull request to `master`:
 
@@ -143,7 +144,9 @@ See [docs/EVIDENCE.md](docs/EVIDENCE.md) for the full record.
 - **Live feed**: incoming Bitget MCP news, SEC 8-K filings, and perp moves are shown with their model verdicts.
 - **Telegram alerts**: anyone can connect [@tesrune_desk_bot](https://t.me/tesrune_desk_bot) with `/start`. The bot alerts when a hedge is ready or an unwind fails, then links back to the desk. It never executes.
 - **Index proxy hedge**: optional beta-sized correlation hedging for a held name with no same-name Bitget perp. It is clearly labeled as a proxy with basis risk and is off by default.
-- **Replay library**: real historical scenarios cover both a material-down proposal and an already-priced decline.
+- **Replay library**: real historical scenarios cover both a proposal path and a refusal path. Qwen's exact classification can vary between calls, so the desk records the actual model decision and mandate result rather than forcing a scripted outcome.
+- **Replay reset**: **Reset demo** clears replay-only pending state, replay schedules, the transient replay session, and pre-reset replay rows from the visible desk. It preserves the holdings book, live cycles and schedules, configuration, and append-only evidence. Reset is refused while a replay hedge may still be externally open or unresolved.
+- **Desk refresh**: the ↻ control only refetches `/api/state`. It does not mutate trading state.
 
 ## Run locally
 
@@ -214,7 +217,9 @@ docs/
 - Demo execution uses virtual funds on Bitget's demo engine. It is not a live-money account.
 - Historical replay pricing uses real candle ranges where exact historical perp fills are unavailable. Those ranges are not presented as exact fills.
 - Underlying gap P&L remains pending until a post-open quote is verified.
+- Qwen classification is model-driven and can vary between calls. Replay scenarios demonstrate decision paths, but the exact class, confidence, or refusal rule is not hardcoded.
 - Calm dark windows can produce no proposal. Tesrune records that outcome and places no order.
+- Replay reset only clears replay-derived presentation and transient replay state. Append-only evidence remains preserved.
 - Proxy hedges carry basis risk and are disabled by default.
 
 ## License
