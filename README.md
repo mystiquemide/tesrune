@@ -10,6 +10,7 @@
   <a href="https://github.com/mystiquemide/tesrune/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/mystiquemide/tesrune/actions/workflows/ci.yml/badge.svg?branch=master"></a>
   <img alt="Node 22" src="https://img.shields.io/badge/Node-22-339933?logo=node.js&logoColor=white">
   <img alt="Bitget demo trading" src="https://img.shields.io/badge/Bitget-demo%20trading-F5B942">
+  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/License-MIT-blue.svg"></a>
 </p>
 
 <p align="center">
@@ -210,3 +211,7 @@ docs/
 - Underlying gap P&L remains pending until a post-open quote is verified.
 - Calm dark windows can produce no proposal. Tesrune records that outcome and places no order.
 - Proxy hedges carry basis risk and are disabled by default.
+
+## License
+
+Tesrune is released under the [MIT License](LICENSE).
