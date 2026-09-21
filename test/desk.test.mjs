@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { createDeskServer, routeIntent } from '../src/desk.mjs';
 
 test('routes the judge-path natural language intents', () => {
@@ -41,4 +42,14 @@ test('returns structured client errors', async () => {
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }
+});
+
+test('exposes the replay reset and desk rehydrate controls', async () => {
+  const html = await readFile(new URL('../public/desk.html', import.meta.url), 'utf8');
+  const script = await readFile(new URL('../public/js/desk.js', import.meta.url), 'utf8');
+  assert.ok(html.indexOf('id="replay-start"') < html.indexOf('id="replay-jump"'));
+  assert.ok(html.indexOf('id="replay-jump"') < html.indexOf('id="replay-reset"'));
+  assert.match(html, /id="replay-reset"[^>]*>Reset demo</);
+  assert.match(html, /id="desk-refresh"/);
+  assert.match(script, /\/api\/replay\/reset/);
 });

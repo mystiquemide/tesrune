@@ -483,7 +483,11 @@ async function refresh() {
 function renderReplayControls(state) {
   const jump = document.getElementById('replay-jump');
   if (!jump) return;
-  const hasOpen = Array.isArray(state.cycles) && state.cycles.some((c) => c.status === 'open');
+  const hasOpen = Boolean(
+    state.replaySession?.prepared &&
+    Array.isArray(state.cycles) &&
+    state.cycles.some((c) => c.status === 'open' && (c.mode === 'replay' || c.proposal?.event?.historicalReplay))
+  );
   jump.disabled = !hasOpen;
   jump.title = hasOpen ? 'Unwind the open hedge at 09:29' : 'Available once a hedge is open';
 }
@@ -576,6 +580,7 @@ document.getElementById('ask-form').addEventListener('submit', (e) => {
   handleAsk(text);
 });
 document.querySelectorAll('[data-ask]').forEach((btn) => btn.addEventListener('click', () => handleAsk(btn.getAttribute('data-ask'))));
+document.getElementById('desk-refresh').addEventListener('click', () => refresh());
 document.getElementById('replay-start').addEventListener('click', async (e) => {
   if (busy) return;
   const scenario = document.getElementById('replay-select').value;
@@ -597,6 +602,29 @@ document.getElementById('replay-start').addEventListener('click', async (e) => {
     refresh();
   } catch (err) { deskNote(err.message); }
   finally { busy = false; e.target.disabled = false; }
+});
+document.getElementById('replay-reset').addEventListener('click', async (e) => {
+  if (busy) return;
+  busy = true; e.target.disabled = true;
+  try {
+    await postJSON('/api/replay/reset', {});
+    thread().replaceChildren();
+    threadSeeded = false;
+    pendingParse = null;
+    bookFormOpen = false;
+    document.getElementById('replay-select').selectedIndex = 0;
+    document.getElementById('replay-banner').classList.remove('show');
+    document.getElementById('pending-slot').replaceChildren();
+    document.body.classList.remove('desk-armed');
+    document.getElementById('replay-start').disabled = false;
+    document.getElementById('replay-jump').disabled = true;
+    refresh();
+  } catch (err) {
+    deskNote(err.message);
+  } finally {
+    busy = false;
+    e.target.disabled = false;
+  }
 });
 document.getElementById('replay-jump').addEventListener('click', async (e) => {
   if (busy) return;

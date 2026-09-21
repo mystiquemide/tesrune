@@ -57,7 +57,7 @@
 
     <!-- Desk conversation column -->
     <section class="desk-col">
-      <div class="col-head">Desk</div>
+      <div class="col-head"><span>Desk</span><button class="mini-btn icon-btn" id="desk-refresh" type="button" aria-label="Refetch desk state" title="Refetch latest desk state">↻</button></div>
       <div class="desk-conv" id="desk-thread"></div>
       <div class="desk-dock">
         <div id="pending-slot"></div>
@@ -70,6 +70,7 @@
               <select class="chip-select" id="replay-select" aria-label="Replay scenario"></select>
               <button class="chip-btn" type="button" id="replay-start">Start replay</button>
               <button class="chip-btn" type="button" id="replay-jump">Jump to 09:29</button>
+              <button class="chip-btn" type="button" id="replay-reset">Reset demo</button>
             </span>
           </div>
           <form class="composer-form" id="ask-form" autocomplete="off">

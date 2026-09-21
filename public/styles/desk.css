@@ -125,6 +125,7 @@ body.desk-armed .down { color: #FF6B6B; }
   letter-spacing: 0;
 }
 .mini-btn:hover { text-decoration: underline; }
+.icon-btn { font-size: 18px; line-height: 1; }
 .btn-sm { padding: 10px 16px; font-size: var(--text-body-sm); }
 
 /* Desk conversation + composer */

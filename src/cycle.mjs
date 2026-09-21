@@ -137,7 +137,8 @@ export async function rejectProposal(stamp) {
   if (index < 0) throw new Error('Pending proposal not found');
   const proposal = pending[index];
   if (proposal.pendingStatus !== 'pending') throw new Error(`Proposal is ${proposal.pendingStatus}; it cannot be dismissed`);
-  await append(PATHS.declines, { eventId: proposal.event?.id ?? null, ticker: proposal.holding?.ticker ?? proposal.symbol ?? null, decision: { type: 'decline', rule: 'HUMAN_REJECTED', reason: 'The trader dismissed this proposal.', symbol: proposal.symbol, qty: proposal.qty } });
+  const historicalReplay = Boolean(proposal.event?.historicalReplay);
+  await append(PATHS.declines, { eventId: proposal.event?.id ?? null, ticker: proposal.holding?.ticker ?? proposal.symbol ?? null, historicalReplay, decision: { type: 'decline', rule: 'HUMAN_REJECTED', reason: 'The trader dismissed this proposal.', symbol: proposal.symbol, qty: proposal.qty } });
   pending.splice(index, 1);
   await persistPending(pending);
   return { dismissed: true, stamp };

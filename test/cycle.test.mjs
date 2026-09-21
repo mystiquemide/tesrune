@@ -70,6 +70,19 @@ test('dismisses a pending proposal and logs a human decline', async () => {
   delete process.env.TESRUNE_DATA_DIR;
 });
 
+test('marks a dismissed replay proposal so reset can hide its decline', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'tesrune-cycle-replay-reject-'));
+  process.env.TESRUNE_DATA_DIR = directory;
+  const module = await import(`../src/cycle.mjs?replay-reject=${Date.now()}`);
+  const replayEvent = { ...event, id: 'replay-reject-event', meta: { historicalReplay: true } };
+  const [entry] = await module.processEvents({ events: [replayEvent], holdings: [holding], contexts: {}, clock: dark, classifyFn: classifier });
+  await module.rejectProposal(entry.decision.mandate.stamp);
+  const rows = (await readFile(join(directory, 'declines.jsonl'), 'utf8')).trim().split('\n').map(JSON.parse);
+  const humanDecline = rows.find((row) => row.decision?.rule === 'HUMAN_REJECTED');
+  assert.equal(humanDecline.historicalReplay, true);
+  delete process.env.TESRUNE_DATA_DIR;
+});
+
 test('marks an ambiguous execution failure unknown and blocks a retry', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'tesrune-cycle-failure-'));
   process.env.TESRUNE_DATA_DIR = directory;

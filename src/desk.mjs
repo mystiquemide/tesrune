@@ -7,6 +7,7 @@ import { state as clockState } from './clock.mjs';
 import { confirmProposal, openCycleStates, pendingProposals, queueDecision, rejectProposal, runOnce } from './cycle.mjs';
 import { propose } from './mandate.mjs';
 import { jumpToUnwind, loadScenario, prepareReplay } from './replay.mjs';
+import { filterReplayRecords, readReplayReset, resetReplayState } from './replay-reset.mjs';
 import { reconcileGaps, schedules, startScheduler } from './unwind.mjs';
 import { broadcast, configureBot, fetchNewSubscribers, getBotUsername, goodbyeMessage, helpMessage, runNotifier, statusMessage, telegramConfigured, welcomeMessage } from './notify.mjs';
 
@@ -143,7 +144,7 @@ function buildFeed(events, verdicts) {
 }
 
 async function statePayload() {
-  const [book, pending, scheduleRows, cycles, declines, proposals, events, verdicts, replays, replaySession] = await Promise.all([
+  const [book, pending, scheduleRows, cycles, declines, proposals, events, verdicts, replays, replaySession, replayReset] = await Promise.all([
     storedBook(),
     pendingProposals(),
     schedules(),
@@ -153,11 +154,17 @@ async function statePayload() {
     readJsonl(LOGS.events, 40),
     readJsonl(LOGS.verdicts, 80),
     readJsonl(LOGS.replays, 10),
-    readJson(REPLAY_SESSION)
+    readJson(REPLAY_SESSION),
+    readReplayReset(DATA_DIR)
   ]);
-  const mergedCycles = mergeCycles(cycles);
+  const resetAt = replayReset?.resetAt;
+  const visibleSchedules = filterReplayRecords(scheduleRows, resetAt, ['armedAt']);
+  const visibleCycles = filterReplayRecords(cycles, resetAt);
+  const visibleDeclines = filterReplayRecords(declines, resetAt);
+  const visibleProposals = filterReplayRecords(proposals, resetAt);
+  const mergedCycles = mergeCycles(visibleCycles);
   return {
-    scorecard: buildScorecard(mergedCycles, declines, proposals),
+    scorecard: buildScorecard(mergedCycles, visibleDeclines, visibleProposals),
     feed: buildFeed(events, verdicts),
     telegram: { enabled: telegramConfigured(), bot: telegramBot },
     product: 'Tesrune',
@@ -165,13 +172,17 @@ async function statePayload() {
     clock: clockState(),
     book,
     pending,
-    schedules: scheduleRows.slice(-20),
+    schedules: visibleSchedules.slice(-20),
     cycles: mergedCycles.slice(-20),
-    declines,
+    declines: visibleDeclines,
     events: events.map(compactEvent),
     replays,
     replaySession
   };
+}
+
+export async function resetDemoState() {
+  return resetReplayState({ dataDir: DATA_DIR });
 }
 
 async function loadSubs() {
@@ -377,6 +388,7 @@ export async function handle(req, res) {
       await writeReplaySession({ scenarioName: name, prepared });
       return send(res, 200, prepared);
     }
+    if (req.method === 'POST' && url.pathname === '/api/replay/reset') return send(res, 200, await resetDemoState());
     if (req.method === 'POST' && url.pathname === '/api/replay/jump') {
       const session = await readJson(REPLAY_SESSION);
       if (!session?.prepared || !session?.cycle) throw new Error('Open a replay cycle before jumping the clock');
