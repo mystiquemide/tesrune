@@ -16,6 +16,7 @@
 <p align="center">
   <a href="https://tesrune.midelabs.xyz">Landing</a> ·
   <a href="https://tesrune.midelabs.xyz/desk">Demo desk</a> ·
+  <a href="https://youtu.be/komtewJZ2Qc">Demo video</a> ·
   <a href="https://t.me/tesrune_desk_bot">Telegram alerts</a> ·
   <a href="docs/EVIDENCE.md">Evidence</a>
 </p>
@@ -111,6 +112,8 @@ Tesrune depends on Bitget for the core product loop:
 Remove the stock perps and the dark-hours hedge disappears.
 
 ## Demo path, under three minutes
+
+Watch the full [Tesrune demo video](https://youtu.be/komtewJZ2Qc), or run the flow yourself:
 
 1. Open the [demo desk](https://tesrune.midelabs.xyz/desk).
 2. Choose the TSLA weekend tariff replay and click **Start replay**.
