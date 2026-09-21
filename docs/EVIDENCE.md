@@ -11,8 +11,8 @@ Two things to read carefully before the numbers:
 
 ## 1. Test suite
 
-- 81 of 81 tests pass with `node --test 'test/*.test.mjs'` on Node 22.
-- Coverage spans the market clock, the signed demo execution client, feeds, book parsing, the mandate rules, materiality classification, the cycle, the unwind scheduler and gap reconciliation, the desk server, the Telegram notifier, the index-proxy sizing and its mandate branch, and both replay scenarios.
+- 83 of 83 tests pass with `node --test 'test/*.test.mjs'` on Node 22.
+- Coverage spans the market clock, the signed demo execution client, feeds, book parsing, the mandate rules, materiality classification, the cycle, the unwind scheduler and gap reconciliation, the desk server and state hydration, the Telegram subscriber/notifier flow, the index-proxy sizing and its mandate branch, and both replay scenarios.
 
 ## 2. Bitget demo execution cycles (demo-engine fills, virtual funds)
 
