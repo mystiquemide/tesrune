@@ -484,7 +484,7 @@
   text-align: center;
   background-image:
     linear-gradient(rgba(14, 17, 22, 0.74), rgba(14, 17, 22, 0.84)),
-    url('/img/skyline-night.jpg');
+    url('/img/skyline-night.webp');
   background-size: cover;
   background-position: center;
 }
