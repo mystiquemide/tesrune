@@ -19,6 +19,10 @@
   <a href="docs/EVIDENCE.md">Evidence</a>
 </p>
 
+> **Track:** AI Trading Desk · Open Theme  
+> **Built with:** Bitget Stock Perpetuals · Bitget Demo Trading · Bitget MCP · Qwen 3.8 Max · Agent Hub optional  
+> **Core idea:** Tesrune watches US stocks held at a closed broker, proposes bounded same-name hedges during dark hours, requires human confirmation, and unwinds every confirmed hedge before the opening bell.
+
 <p align="center">
   <img src="public/img/desk-preview.png" alt="Tesrune desk showing a dark-hours TSLA hedge proposal awaiting human confirmation">
 </p>
