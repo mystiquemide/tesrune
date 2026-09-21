@@ -1,134 +1,354 @@
 # Tesrune Evidence
 
-This is a curated record of real, verified runs. Every number here traces to a logged run. Demo execution and the historical counterfactual are kept in separate sections and are never merged into one P&L number.
+Tesrune is an AI Trading Desk for dark-hours US equity risk. It watches confirmed holdings, interprets material overnight events, proposes bounded same-name hedges on Bitget stock perpetuals, requires human confirmation, and schedules every confirmed replay hedge to unwind by 09:29 ET.
 
-Product in one line: an agent that hedges your closed-broker US stock holdings on Bitget stock perpetuals during the hours your broker is dark, and is flat by 09:29 ET before the opening bell. The invariant is "flat by the bell."
+**Core invariant:** hold the stock, hedge the dark hours, flat by the bell.
 
-Two things to read carefully before the numbers:
+- Live app: https://tesrune.midelabs.xyz
+- Demo desk: https://tesrune.midelabs.xyz/desk
+- Demo video: https://youtu.be/komtewJZ2Qc
+- Telegram alerts: https://t.me/tesrune_desk_bot
 
-- Bitget demo execution means demo-engine fills with virtual funds on the Bitget demo trading environment. These are real order placements and real fills, funded by virtual balances. They are not live-account trades and they are not historical fills.
-- The historical replay is a counterfactual. It runs the classifier on information that was available at decision time and prices the hedge against a range of real Bitget candles. It reports a range, not exact fills.
+This document separates three different kinds of evidence:
 
-## 1. Test suite
+1. **Current Bitget demo execution**: real orders and fills on Bitget's demo engine using virtual funds.
+2. **Historical replay counterfactuals**: real historical market data used to test the research thesis. These are ranges, not claimed historical fills.
+3. **Automated and browser verification**: tests of the mandate, recovery, reset, state hydration, and UI paths.
 
-- 83 of 83 tests pass with `node --test 'test/*.test.mjs'` on Node 22.
-- Coverage spans the market clock, the signed demo execution client, feeds, book parsing, the mandate rules, materiality classification, the cycle, the unwind scheduler and gap reconciliation, the desk server and state hydration, the Telegram subscriber/notifier flow, the index-proxy sizing and its mandate branch, and both replay scenarios.
+They are intentionally not merged into one performance number.
 
-## 2. Bitget demo execution cycles (demo-engine fills, virtual funds)
+## 1. Current build verification
 
-All four cycles below placed real orders on the Bitget demo engine with virtual funds, then verified the TSLA position flat after the unwind. Fees are estimated at the taker rate. Where funding is shown as 0, no funding settlement fell inside the hold.
+### Automated suite
 
-### T7, synthetic cycle
+- **88 of 88 tests pass** with `node --test 'test/*.test.mjs'` on Node 22.
+- Syntax checks pass for the JavaScript modules covered by CI.
+- The suite covers the market clock, book parsing, event feeds, Qwen materiality handling, deterministic mandate rules, signed proposal validation, Bitget demo execution, replay flows, replay reset semantics, cycle state, unwind and restart recovery, gap reconciliation, desk state and hydration, Telegram alerts, and proxy sizing.
+- GitHub Actions CI is configured for pushes and pull requests to `master`.
 
-- Path: confirmed book to fresh marks to windowed feeds to Qwen verdict to mandate to human confirmation to signed demo order.
-- Input labeled synthetic: 0.04 TSLA holding to a 0.02 TSLAUSDT short, 7 mandate checks, notional 7.2838.
-- Open order `1485550303184060417`, close order `1485550310620561415`.
-- Cycle `405b9fcf-77f4-45de-b6f3-ae61fc082692` recorded append-only from open to closed.
-- Result: pending 0, open cycles 0, TSLA position flat.
+### Production verification
+
+The deployed desk has been manually verified in a real browser.
+
+Observed after the replay-reset deployment:
+
+- public health endpoint returned HTTP 200;
+- public desk returned HTTP 200;
+- **Reset demo** is visible;
+- the DESK refresh control is visible;
+- **Start replay** is enabled on a clean desk;
+- **Jump to 09:29** is disabled until a replay hedge is actually open;
+- stale replay schedule/session state can be cleared without removing the holdings book;
+- replay reset does not call Bitget, Qwen, or an execution path;
+- the DESK refresh control only refetches `/api/state` and does not mutate server or exchange state.
+
+## 2. Final judge-path browser run
+
+This is the clean end-to-end path used to verify the current product story.
+
+### TSLA proposal and hedge
+
+- Scenario: TSLA weekend tariff replay.
+- Qwen 3.8 Max decision: **material · down · 0.75**.
+- The proposal passed the deterministic mandate and required explicit human confirmation.
+- After confirmation, Bitget demo trading filled open order **`1485882314327228417`**.
+- The desk then advanced to the configured 09:29 ET unwind.
+- Bitget demo trading filled close order **`1485882378382639105`**.
+- Final cycle state: **CLOSED**.
+- The Tesrune-created TSLA replay hedge was verified flat on Bitget.
+
+The flat check is scoped to the Tesrune-created hedge for that replay. It is not a claim that every position in the demo account is flat.
+
+### COIN refusal
+
+- Scenario: COIN replay.
+- Qwen 3.8 Max decision on this verified run: **priced · down · 0.68**.
+- Deterministic mandate result: **`NOT_MATERIAL`**.
+- No hedge was opened.
+
+This is an important product outcome: the desk can end a research task with a refusal rather than manufacturing a trade.
+
+### State hydration
+
+The same run also verified that:
+
+- refreshing during an active proposal restored the pending proposal and confirmation banner;
+- refreshing after the TSLA cycle completed restored the closed cycle;
+- the COIN refusal was restored after refresh;
+- users did not need to repeat onboarding to recover the desk state.
+
+## 3. Replay reset and repeatability proof
+
+The replay reset exists to return the demo to a clean research state without deleting permanent evidence or touching live records.
+
+Reset semantics:
+
+- removes replay-only pending proposals from local pending state;
+- removes replay-only schedules;
+- deletes the transient replay session;
+- writes a local replay-reset marker;
+- filters pre-reset replay proposals, declines, and cycles from the derived visible desk state;
+- clears the visible replay card/thread, banner, pending slot, and armed theme;
+- preserves the holdings book;
+- preserves live cycles and live schedules;
+- preserves environment and configuration;
+- preserves append-only replay/evidence logs.
+
+For safety, reset refuses to run while a replay may still have external exposure, including open, closing, failed, executing, or unknown states. The unwind must be completed or resolved first.
+
+### Browser verification of reset
+
+A separate isolated browser verification used real Qwen classification and Bitget demo execution:
+
+- TSLA produced a Qwen material/down proposal.
+- Human confirmation opened Bitget demo order **`1485950445284392961`**.
+- Jump to 09:29 closed Bitget demo order **`1485950448769859585`**.
+- The cycle closed with no evidence errors and the Tesrune TSLA hedge was verified flat.
+- Browser refresh during the active replay restored the pending proposal and banner.
+- Browser refresh after completion restored the closed cycle.
+- A clean COIN retry produced a **`NOT_MATERIAL`** refusal.
+- **Reset demo** then returned the visible replay state to:
+  - no replay pending proposals;
+  - no replay cycles;
+  - no replay declines;
+  - zero replay scorecard proposals and declines;
+  - no replay session;
+  - Start replay enabled;
+  - Jump to 09:29 disabled.
+- TSLA replay could be started successfully again after reset.
+- Clicking the DESK refresh icon left server state unchanged.
+
+Qwen classification is model-driven, so exact confidence, class, or refusal rule can vary between calls. The product records the model's actual output and then applies deterministic mandate rules. It does not hardcode the desired demo outcome.
+
+## 4. Earlier Bitget demo execution proofs
+
+These runs are retained because they verify specific mechanisms independently of the final judge path.
+
+### T7, synthetic execution cycle
+
+- Path: confirmed book → fresh marks → windowed feeds → Qwen verdict → mandate → human confirmation → signed Bitget demo order.
+- Explicitly synthetic input: 0.04 TSLA holding, 0.02 TSLAUSDT short, seven mandate checks, notional 7.2838.
+- Open order **`1485550303184060417`**.
+- Close order **`1485550310620561415`**.
+- Cycle **`405b9fcf-77f4-45de-b6f3-ae61fc082692`** was recorded append-only from open to closed.
+- Result: pending 0, open cycles 0, Tesrune TSLA hedge flat.
 
 ### T8, restart-recovery proof
 
-- Process A opened a synthetic 0.02 TSLA short, order `1485553376786808833`, due to unwind in 10 seconds, then exited.
-- Process B started fresh, recovered the persisted schedule, and closed order `1485553430339682306`.
-- Fills: 364.18 open to 364.19 close, gross -0.0002, estimated round-trip fees 0.00874176, net -0.00894176.
-- Result: schedule complete after 1 attempt, pending 0, open cycles 0, TSLA position flat.
-- What this proves: an open hedge survives a process restart and still unwinds on schedule.
+- Process A opened a synthetic 0.02 TSLA short with order **`1485553376786808833`**, due to unwind in 10 seconds, then exited.
+- A fresh Process B recovered the persisted schedule and closed with order **`1485553430339682306`**.
+- Fills: 364.18 open to 364.19 close.
+- Gross hedge P&L: -0.0002.
+- Estimated round-trip fees: 0.00874176.
+- Net hedge P&L after estimated fees: -0.00894176.
+- Result: schedule complete after one attempt, pending 0, open cycles 0, Tesrune TSLA hedge flat.
+
+What this proves: an open Tesrune hedge can survive a process restart and still unwind from persisted schedule state.
 
 ### T9, replay cycle
 
-- Current demo execution proof kept separate from the historical counterfactual in the same run.
-- Qwen 3.8 Max classified the replay event material and down at confidence 0.70. The deterministic 50 percent default sized 0.02 of the 0.04 holding. Qwen did not size the order.
-- Cycle `29b32de7-06c5-4d73-9cc2-966065bd8eef`.
-- Open order `1485558571809800204`, close order `1485558574137638913`.
-- Current fill P&L: 364.18 to 364.29, gross -0.0022, estimated fees 0.00874176, net -0.01094176.
-- Result: schedule complete, pending 0, open cycles 0, TSLA position flat.
+- Current Bitget demo execution was kept separate from the historical counterfactual.
+- Qwen 3.8 Max classified the replay event **material · down · 0.70**.
+- The deterministic 50% default sized 0.02 against the 0.04 holding. Qwen did not size the order.
+- Cycle **`29b32de7-06c5-4d73-9cc2-966065bd8eef`**.
+- Open order **`1485558571809800204`**.
+- Close order **`1485558574137638913`**.
+- Current-fill P&L: 364.18 to 364.29, gross -0.0022.
+- Estimated fees: 0.00874176.
+- Net hedge P&L after estimated fees: -0.01094176.
+- Result: schedule complete, pending 0, open cycles 0, Tesrune TSLA hedge flat.
 
-### Latest replay cycle through the live desk endpoints
+### Prior live-desk endpoint cycle
 
-- Ran the whole path through the same API endpoints the browser UI calls, on the self-contained desk build.
-- Replay start: Qwen 3.8 Max material and down at confidence 0.72, a 0.02 TSLAUSDT proposal, 64-character mandate stamp.
-- Cycle `3ea79a46-9d4a-4e56-86c5-905e46b948bb`, mode replay.
-- Confirm: real demo open order `1485611262078517249` at 364.18.
-- Jump to unwind: real demo close order `1485611445537374209` at 364.29.
-- Net hedge P&L -0.01094152, fees estimated, funding 0.
-- Underlying gap P&L: null, labeled "pending next cash-session open."
-- Result: pending 0, TSLA position flat.
+- Ran through the same API endpoints used by the browser UI.
+- Qwen 3.8 Max: **material · down · 0.72**.
+- Proposal: 0.02 TSLAUSDT with a 64-character mandate stamp.
+- Cycle **`3ea79a46-9d4a-4e56-86c5-905e46b948bb`**, mode replay.
+- Open order **`1485611262078517249`** at 364.18.
+- Close order **`1485611445537374209`** at 364.29.
+- Net hedge P&L: -0.01094152 with estimated fees and funding 0.
+- Underlying gap P&L remained null and explicitly labeled **pending next cash-session open**.
+- Result: pending 0, Tesrune TSLA hedge flat.
 
-## 3. Historical replay counterfactual, 21 February 2026 tariff scenario
+## 5. Historical replay counterfactuals
 
-Honest label: historical counterfactual range, not exact fills. This section prices a hedge against real Bitget candle ranges. It is kept separate from the demo execution above and is never combined with it into a single number.
+Historical scenarios test whether the research thesis would have had something meaningful to evaluate. They are not presented as exact historical executions.
 
-- Event source: CNN Business, "Global tariff increased from 10% to 15%, effective immediately."
+### TSLA, 21 February 2026 tariff scenario
+
+**Label:** historical counterfactual range, not exact fills.
+
+- Event source: CNN Business, “Global tariff increased from 10% to 15%, effective immediately.”
 - Event URL: https://www.cnn.com/2026/02/21/business/trump-global-tariffs-increase-supreme-court
-- The classifier only saw information available at the Saturday decision time.
+- The classifier only received information available at the Saturday decision time.
 
-Prices, from Bitget MCP historical data and Bitget public TSLAUSDT 4H candles:
+Prices from Bitget MCP historical data and Bitget public TSLAUSDT 4H candles:
 
 - TSLA Friday close: 411.82.
 - TSLA Monday open: 407.285.
-- Gap: -1.10 percent.
-- Held quantity: 0.04. Hedge quantity: 0.02.
+- Underlying opening gap: -1.10%.
+- Held quantity: 0.04.
+- Hedge quantity: 0.02.
 - Unhedged gap P&L on the 0.04 holding: -0.1814.
 - Hedge gross P&L range: 0.0532 to 0.2194.
-- Perp entry candle range used for the entry: 410.92 to 412.00.
-- Perp unwind candle range used for the exit: 401.03 to 408.26.
+- Entry candle range: 410.92 to 412.00.
+- Unwind candle range: 401.03 to 408.26.
 
-Why a range and not one number: a stock Friday close is not a weekend perp fill, so the hedge is priced across the real perp candle band rather than claimed at an exact price. Before costs, the combined open range across the hedge and the underlying spans -0.1282 to +0.038. These are ranges, not exact fills.
+A stock Friday close is not the same thing as a weekend perpetual fill, so Tesrune does not invent an exact fill price. The counterfactual is priced across the real perp candle bands.
 
-### Second scenario, 15 September 2026 COIN rate-hike selloff
+Before costs, the combined hedge-plus-underlying range spans -0.1282 to +0.038. This is a range, not a claimed realized return.
 
-Honest label: historical counterfactual range, sourced from Bitget MCP. The catalyst is Bitget MCP editorial (a daily desk note on rising rate-hike expectations and an AI slowdown scare), so it is cited as the Bitget MCP source, not an external wire, and has no external URL.
+### COIN, 15 September 2026 rate-hike selloff
 
-- Prices, from Bitget MCP equity_price_historical: 14 Sep close 191.45, 15 Sep open 183.621 (a -4.09% overnight gap), 15 Sep close 172.11.
-- Perp candles, from Bitget public COINUSDT 4H candles: entry 2026-09-15T00:00Z open 185.84 high 186.31 low 183.29 close 183.48; unwind 2026-09-15T12:00Z open 181.52 high 181.59 low 168.34 close 172.37.
-- Decision time 2026-09-15T00:30Z is a verified dark window; the unwind resolves to 2026-09-15T13:29Z from the clock.
-- Outcome on a verified run: Qwen 3.8 Max classified the event "priced" at 0.72 confidence, so the mandate declined it NOT_MATERIAL. This is the honest already-priced refusal path, decided live by the model, not forced. No order was placed.
+**Label:** historical counterfactual range sourced from Bitget MCP.
 
-Together the two scenarios cover both outcomes: TSLA produces a material-down proposal and a full demo cycle, COIN produces a priced-decline.
+The catalyst is a Bitget MCP editorial daily-desk note covering rising rate-hike expectations and an AI slowdown scare. It is cited as Bitget MCP data rather than presented as an external wire story.
 
-## 4. Feeds, holdings, and mandate proofs
+- Bitget MCP equity history: 14 Sep close 191.45, 15 Sep open 183.621, a -4.09% opening gap, 15 Sep close 172.11.
+- Bitget public COINUSDT 4H entry candle at 2026-09-15T00:00Z: open 185.84, high 186.31, low 183.29, close 183.48.
+- Bitget public COINUSDT 4H unwind candle at 2026-09-15T12:00Z: open 181.52, high 181.59, low 168.34, close 172.37.
+- Decision time 2026-09-15T00:30Z is a verified dark window.
+- The configured unwind resolves to 2026-09-15T13:29Z.
 
-### T3, feeds
+On one verified run, Qwen 3.8 Max classified the event **priced** at 0.72 confidence and the mandate declined it **`NOT_MATERIAL`**. No order was placed.
 
-- One clean poll returned 9 current events: 8 Bitget MCP news items and 1 in-window SEC EDGAR 8-K, with no source errors.
-- TSLA quote: close 364.18, previous 366.20. TSLAUSDT mark 364.23, funding -0.000049.
-- A more recent TSLA EDGAR filing parsed with items 2.02 and 9.01 and a canonical SEC URL, but it was not written because its timestamp fell outside the active poll window. Seed history cannot become a new hedge event.
-- 30 of 30 tests passed at this stage.
+The exact model confidence can vary between calls. What is fixed is the boundary: Qwen interprets; deterministic mandate rules decide whether the model output is eligible to become a proposal; the user must still confirm before execution.
 
-### T4, book
+## 6. Feeds, holdings, and mandate proofs
 
-- Input "100 TSLA, 40 NVDA, 25 MSTR at IBKR" parsed and resolved. All three hedgeable.
-- Marks: 364.22, 221.79, 153.17. Notionals: 36,422, 8,871.6, 3,829.25. No open shorts.
-- The confirmed book was written only after an explicit confirm step, at file mode 600.
-- COST was correctly reported unlisted on the demo engine while liveListed was true.
-- 37 of 37 tests passed at this stage.
+### Feeds
 
-### T5, mandate declines
+One clean feed poll returned nine current events:
 
-- The mandate engine implements seven rules in order: NOT_DARK, NOT_MATERIAL, DIRECTION_UP, UNLISTED, CAP, MIN_SIZE, DUPLICATE.
-- Verification fixture: 75 TSLA, notional 27,316.50, taker fees 16.3899 each and 32.7798 round-trip, one funding settlement at -1.3385085, and a 64-character valid mandate stamp.
-- Through the desk, "hedge 150 TSLA" produced a proposal clipped to 100 with 7 checks and a Monday 09:29 ET unwind, which demonstrates the CAP refusal live.
-- 46 of 46 tests passed at this stage.
+- eight Bitget MCP news items;
+- one in-window SEC EDGAR 8-K;
+- no source errors.
 
-### T6, Qwen classification of a real SEC filing
+Observed market data in that run:
 
-- Real filing `0001193125-26-389858`, an MSTR 8-K with items 7.01 and 8.01 and no substantive detail in the feed, was classified noise and unclear at confidence 0.85 with ratio 0.
-- A synthetic fixture was explicitly labeled, and Qwen refused to treat it as real evidence.
-- Qwen never sees account balances, never sizes above the cap, and has no code path to the exchange.
-- 53 of 53 tests passed at this stage.
+- TSLA close 364.18;
+- previous TSLA close 366.20;
+- TSLAUSDT mark 364.23;
+- funding -0.000049.
 
-## 5. Added capabilities
+A more recent TSLA EDGAR filing parsed with items 2.02 and 9.01 and a canonical SEC URL, but it was not written because its timestamp fell outside the active poll window. Seed history therefore cannot silently become a new hedge event.
 
-- Post-open gap reconciliation. After the cash session opens, the desk fetches the real open and computes the gap on the hedged shares and the share of it the hedge offset. It only runs for live cycles while the window is broker-open, and the gap stays null and labeled pending until then. Unit-tested end to end with an injected quote. No live overnight cycle has been reconciled yet because the demo cycles to date are replay-mode, so this is proven by test and mechanism, and populates on a real dark-hours hedge held into the next open.
-- Hedge scorecard. The desk aggregates proposals, declines, decline rate, closed cycles, net hedge P&L, average event-to-proposal latency, gaps reconciled, and average hedge offset, computed only from real logged records. Served in the desk state and shown in the Cycles column.
-- Live feed. The desk joins recent events with their Qwen verdicts and shows them in the Book column, so the event to classification path is visible. Populates from live feed polls.
-- Telegram alerts. Alert-only with a deep link back to the desk to confirm. A test alert to the configured chat returned ok from the Telegram API. The notifier dedupes to one alert per proposal and one per unwind failure, and it never places an order.
-- Index-proxy hedge. For an unlisted name, the desk can size a correlation hedge on an index perp using a beta estimated from real returns, capped at the beta target and labeled a proxy with basis risk. Additive to the mandate, off by default behind `TESRUNE_PROXY_HEDGE=1`, and unit-tested including the sizing, the mandate branch, and the book enrichment.
+Historical milestone at this stage: **30/30 tests passed**.
 
-## 6. Limitations and honest labels
+### Holdings book
 
-- Holdings are self-reported. The user pastes them. We never claim to verify broker positions. The delta cap is enforced against the pasted quantity.
-- Demo execution uses virtual funds on the Bitget demo engine. It is not a live UTA account.
-- Exact historical perp fills are not available, so the historical counterfactual uses candle ranges rather than exact prices.
-- Underlying gap P&L is left null and labeled "pending next cash-session open" until a post-open quote is verified.
-- Calm dark windows can produce zero decisions. When nothing is material, the desk reports that honestly and places no order.
+Input:
+
+`100 TSLA, 40 NVDA, 25 MSTR at IBKR`
+
+Observed result:
+
+- all three parsed and resolved as hedgeable in that run;
+- marks: 364.22, 221.79, 153.17;
+- notionals: 36,422; 8,871.6; 3,829.25;
+- no open shorts.
+
+The confirmed book was written only after an explicit confirmation step and stored at file mode 600.
+
+COST was correctly reported unlisted on the demo engine while `liveListed` was true.
+
+Historical milestone at this stage: **37/37 tests passed**.
+
+### Deterministic mandate
+
+The mandate engine implements seven checks in order:
+
+1. `NOT_DARK`
+2. `NOT_MATERIAL`
+3. `DIRECTION_UP`
+4. `UNLISTED`
+5. `CAP`
+6. `MIN_SIZE`
+7. `DUPLICATE`
+
+Verification fixture:
+
+- 75 TSLA;
+- notional 27,316.50;
+- taker fees 16.3899 each side;
+- estimated round trip 32.7798;
+- one funding settlement at -1.3385085;
+- 64-character valid mandate stamp.
+
+Through the desk, a request to `hedge 150 TSLA` produced a proposal clipped to 100 with all seven checks and a Monday 09:29 ET unwind, demonstrating that the user cannot be made net short beyond the confirmed holding.
+
+Historical milestone at this stage: **46/46 tests passed**.
+
+### Qwen classification of a real SEC filing
+
+Real filing **`0001193125-26-389858`**, an MSTR 8-K with items 7.01 and 8.01 and no substantive detail in the feed, was classified:
+
+- noise;
+- direction unclear;
+- confidence 0.85;
+- ratio 0.
+
+A synthetic fixture was explicitly labeled, and Qwen refused to treat it as real evidence.
+
+Qwen does not receive exchange execution authority and cannot bypass the mandate boundary.
+
+Historical milestone at this stage: **53/53 tests passed**.
+
+## 7. Additional capability evidence
+
+### Post-open gap reconciliation
+
+After the cash session opens, the desk can fetch the verified stock open and calculate the gap on the hedged shares plus the portion offset by the hedge.
+
+The field remains null and labeled pending until a post-open quote is available. This path is unit-tested with an injected quote. No live overnight Tesrune cycle has yet been presented as a completed real-market gap reconciliation.
+
+### Hedge scorecard
+
+The desk aggregates logged records into:
+
+- proposals;
+- declines;
+- decline rate;
+- closed cycles;
+- net hedge P&L;
+- average event-to-proposal latency;
+- reconciled gaps;
+- average hedge offset.
+
+The scorecard is derived from actual stored records rather than hardcoded display values.
+
+### Live feed
+
+Recent Bitget MCP news, SEC filings, and relevant perp moves are joined with their model verdicts and shown inside the desk.
+
+### Telegram alerts
+
+`@tesrune_desk_bot` is alert-only.
+
+- Users can subscribe with `/start`.
+- Proposal alerts link back to the desk for review.
+- Unwind failures can trigger alerts.
+- The notifier deduplicates proposal and unwind-failure messages.
+- Telegram has no order-placement path.
+
+### Index-proxy hedge
+
+For an unlisted name, an optional path can size a correlation hedge using an index perpetual and beta estimated from returns.
+
+- clearly labeled as a proxy;
+- carries basis risk;
+- additive to the mandate;
+- disabled by default behind `TESRUNE_PROXY_HEDGE=1`;
+- covered by sizing and mandate tests.
+
+## 8. What the evidence does not claim
+
+- Holdings are self-reported. Tesrune does not verify positions at the external broker.
+- Bitget demo execution uses virtual funds. It is not a live-money account.
+- Historical counterfactuals use real candle ranges where exact historical perpetual fills are unavailable. They are not presented as exact fills.
+- Underlying gap P&L remains pending until a post-open quote is verified.
+- Qwen classification can vary between calls. Exact labels and confidence values are observed run outputs, not hardcoded promises.
+- Calm dark windows may produce no proposal. Tesrune records that outcome and places no order.
+- Replay reset clears replay-derived presentation and transient replay state but preserves append-only evidence.
+- Proxy hedges carry basis risk and are disabled by default.
+- Tesrune is a decision-support desk with explicit human confirmation, not an unrestricted autonomous trading agent.
