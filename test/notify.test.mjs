@@ -13,7 +13,7 @@ const proposal = {
 test('formats a proposal alert with the desk link and no execution', () => {
   const text = formatProposalAlert(proposal, 'https://tesrune.midelabs.xyz');
   assert.match(text, /TSLAUSDT short 0.02/);
-  assert.match(text, /material down 0.72/);
+  assert.match(text, /material down, 0.72 confidence/);
   assert.match(text, /https:\/\/tesrune\.midelabs\.xyz\/desk/);
   assert.match(text, /without your confirm/);
 });
@@ -63,10 +63,10 @@ test('fetchNewSubscribers extracts chat ids and advances the offset', async () =
 
 test('bot messages are honest and carry the desk link', () => {
   const url = 'https://tesrune.midelabs.xyz';
-  assert.match(welcomeMessage(url), /subscribed to Tesrune dark-hours alerts/);
-  assert.match(welcomeMessage(url), /Nothing opens until you confirm/);
+  assert.match(welcomeMessage(url), /Welcome to Tesrune\. Alerts are on/);
+  assert.match(welcomeMessage(url), /Nothing opens without your confirmation/);
   assert.match(helpMessage(url), /never sizes or places orders/);
   assert.match(helpMessage(url), new RegExp(`${url}/desk`));
-  assert.match(statusMessage({ window: 'dark' }, url), /Desk status: dark/);
-  assert.match(goodbyeMessage(), /Unsubscribed/);
+  assert.match(statusMessage({ window: 'dark' }, url), /Desk window: dark/);
+  assert.match(goodbyeMessage(), /Alerts off/);
 });
